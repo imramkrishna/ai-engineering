@@ -3,7 +3,7 @@ import { chatController } from "./controllers/chat.controller.js";
 import { extractController } from "./controllers/extract.controller.js";
 import { similarController } from "./controllers/similar.controller.js";
 import { toolController } from "./controllers/toolcall.controller.js";
-
+import "dotenv/config"
 const app = express();
 
 app.use(express.json());
