@@ -17,15 +17,16 @@ export const chatController = async (req: Request, res: Response) => {
     });
   }
   try {
-    const response = await structuredModel.invoke([new HumanMessage(query)]);
-    const result = classificationSchema.safeParse(response);
+    const structuredResponse = await structuredModel.invoke([new HumanMessage(query)]);
+    const result = classificationSchema.safeParse(structuredResponse);
     if (!result.success) {
-      console.log("Invalid Strcutred Response : ", response);
+      console.log("Invalid Structured Response : ", structuredResponse);
       return res.status(422).json({
         success: false,
         message: "Validation Failed. Ask better query or message.",
       });
     }
+    const response=await model.invoke([new HumanMessage(query)])
     
   } catch (error) {
     console.log("Error in chat controller : ", error);
