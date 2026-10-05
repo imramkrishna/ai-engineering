@@ -23,7 +23,7 @@ export function getChatModel() {
   });
 }
 
-export function getEmbeddings() {
+export function getEmbeddingsModel() {
   return new OpenAIEmbeddings({
     model: embeddingModel,
     apiKey,

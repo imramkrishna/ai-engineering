@@ -1,8 +1,7 @@
 import type {
   StructuredTool,
-  StructuredToolInterface,
 } from "@langchain/core/tools";
-import { getChatModel } from "../packages/models.js";
+import { getChatModel } from "../../packages/models.js";
 import { tools } from "./tools.js";
 import { HumanMessage, ToolMessage } from "langchain";
 
