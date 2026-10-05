@@ -1,6 +1,7 @@
 import express from "express";
 import { chatController } from "./controllers/chat.controller.js";
 import { extractController } from "./controllers/extract.controller.js";
+import { similarController } from "./controllers/similar.controller.js";
 
 const app = express();
 
@@ -18,7 +19,7 @@ app.post("/extract", extractController);
 
 app.post("/tools", async (req, res) => {});
 
-app.post("/similar", async (req, res) => {});
+app.post("/similar", similarController);
 
 app.listen(3000, () => {
   console.log("Prompt Lab running on http://localhost:3000");
