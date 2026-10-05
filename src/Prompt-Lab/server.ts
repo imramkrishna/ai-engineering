@@ -2,6 +2,7 @@ import express from "express";
 import { chatController } from "./controllers/chat.controller.js";
 import { extractController } from "./controllers/extract.controller.js";
 import { similarController } from "./controllers/similar.controller.js";
+import { toolController } from "./controllers/toolcall.controller.js";
 
 const app = express();
 
@@ -17,7 +18,7 @@ app.post("/chat", chatController);
 
 app.post("/extract", extractController);
 
-app.post("/tools", async (req, res) => {});
+app.post("/tools", toolController);
 
 app.post("/similar", similarController);
 
