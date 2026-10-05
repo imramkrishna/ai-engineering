@@ -1,5 +1,5 @@
 import type { StructuredTool } from "@langchain/core/tools";
-import { getChatModel } from "../../packages/models.js";
+import { getChatModel } from "../../packages/models/models.js";
 import { HumanMessage, ToolMessage } from "langchain";
 import { tools } from "../stage0/tools.js";
 import type { Request, Response } from "express";

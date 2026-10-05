@@ -1,6 +1,6 @@
 import type { Request, Response } from "express";
 import { HumanMessage } from "langchain";
-import { getChatModel } from "../../packages/models.js";
+import { getChatModel } from "../../packages/models/models.js";
 import { chatModel } from "../models.js";
 export const chatController = async (req: Request, res: Response) => {
   const { query } = req.body;

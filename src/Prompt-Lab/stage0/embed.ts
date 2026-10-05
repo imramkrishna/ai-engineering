@@ -1,4 +1,4 @@
-import { getEmbeddingsModel } from "../../packages/models.js";
+import { getEmbeddingsModel } from "../../packages/models/models.js";
 
 const embeddingModel = getEmbeddingsModel();
 

@@ -1,5 +1,5 @@
 import express from "express";
-import { chatController } from "./chat.controller.js";
+import { chatController } from "./controller/chat.controller.js";
 
 const app = express();
 app.use(express.json());
