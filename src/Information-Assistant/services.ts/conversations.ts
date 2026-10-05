@@ -3,7 +3,7 @@ import { db, conversations, messages } from "../../packages/db/index.js";
 
 async function conversationExists(id: string): Promise<boolean> {
   const conversation = await db
-    .select()
+    .select({ id: conversations.id })
     .from(conversations)
     .where(eq(conversations.id, id));
   if (!conversation) {
