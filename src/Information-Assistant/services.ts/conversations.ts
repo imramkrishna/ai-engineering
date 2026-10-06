@@ -1,5 +1,6 @@
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { db, conversations, messages } from "../../packages/db/index.js";
+import { AIMessage, HumanMessage } from "langchain";
 
 export async function conversationExists(id: string): Promise<boolean> {
   const conversation = await db
@@ -29,9 +30,11 @@ export async function createNewConversation() {
 }
 export async function getMessages(conversationId: string) {
   const allMessages = await db
-    .select()
+    .select({ content: messages.content, role: messages.role })
     .from(messages)
-    .where(eq(conversations.id, conversationId));
+    .where(eq(messages.conversationId, conversationId))
+    .orderBy(asc(messages.createdAt));
+  console.log("Messages : ", allMessages);
   return allMessages;
 }
 
@@ -50,4 +53,21 @@ export async function saveMessage(
     .returning();
 
   return message;
+}
+
+export function generateLangchainMessages(
+  allMessages: { content: string; role: string }[],
+) {
+  const history = allMessages.map((message) => {
+    if (message.role === "user") {
+      return new HumanMessage(message.content);
+    }
+
+    if (message.role === "assistant") {
+      return new AIMessage(message.content);
+    }
+
+    throw new Error(`Unknown message role: ${message.role}`);
+  });
+  return history;
 }

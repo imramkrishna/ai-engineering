@@ -9,7 +9,7 @@ app.get("/", (req, res) => {
     timestamp: new Date().toLocaleString(),
   });
 });
-app.post("/conversations/:id",chatController)
+app.post("/conversations",chatController)
 app.listen(3001, () => {
   console.log("Information Assitant Server running on http://localhost:3001");
 });
