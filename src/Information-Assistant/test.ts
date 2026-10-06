@@ -1,6 +1,14 @@
-import { getBackupChatModel } from "../packages/models/models.js";
+import {
+  createNewConversation,
+  updateConversationTitle,
+} from "./services.ts/conversations.js";
 
-const model = getBackupChatModel();
-const response = await model.invoke("Which AI Model are you ?");
-
-console.log(response.content);
+console.log("Creating new conversation ");
+const newConversation = await createNewConversation();
+console.log("New Conversation Created. : ", newConversation);
+console.log("Updating Conversation Id ");
+const updatedTitle = await updateConversationTitle(
+  newConversation!.id,
+  "updated title",
+);
+console.log("Title Updated : ", updatedTitle);

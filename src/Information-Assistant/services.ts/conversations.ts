@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { db, conversations, messages } from "../../packages/db/index.js";
 
-async function conversationExists(id: string): Promise<boolean> {
+export async function conversationExists(id: string): Promise<boolean> {
   const conversation = await db
     .select({ id: conversations.id })
     .from(conversations)
@@ -12,7 +12,22 @@ async function conversationExists(id: string): Promise<boolean> {
     return true;
   }
 }
-async function getMessages(conversationId: string) {
+export async function updateConversationTitle(
+  conversationId: string,
+  title: string,
+) {
+  const updated = await db
+    .update(conversations)
+    .set({ title })
+    .where(eq(conversations.id, conversationId))
+    .returning();
+  return updated[0];
+}
+export async function createNewConversation() {
+  const newConversation = await db.insert(conversations).values({}).returning();
+  return newConversation[0];
+}
+export async function getMessages(conversationId: string) {
   const allMessages = await db
     .select()
     .from(messages)
@@ -20,7 +35,7 @@ async function getMessages(conversationId: string) {
   return allMessages;
 }
 
-async function saveMessage(
+export async function saveMessage(
   conversationId: string,
   role: "assistant" | "user" | "tool_call",
   content: string,
