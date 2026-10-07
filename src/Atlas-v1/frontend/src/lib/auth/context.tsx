@@ -23,7 +23,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     name: sessionData.user.name,
     email: sessionData.user.email,
     avatarUrl: sessionData.user.image ?? undefined,
-    createdAt: sessionData.user.createdAt.toISOString()
+    createdAt: sessionData.user.createdAt instanceof Date
+      ? sessionData.user.createdAt.toISOString()
+      : String(sessionData.user.createdAt),
   } : null;
 
   const login = useCallback(async (email: string, password: string) => {
