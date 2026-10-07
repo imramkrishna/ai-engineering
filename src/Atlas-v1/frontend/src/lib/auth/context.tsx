@@ -1,11 +1,8 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import React, { createContext, useContext, useCallback, useMemo } from "react";
 import type { User } from "@/types";
-import { mockAuth } from "@/lib/mock";
-
-// Toggle this env var to switch between mock and real API
-const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== "false";
+import { authClient } from "@/lib/auth-client";
 
 interface AuthContextValue {
   user: User | null;
@@ -19,72 +16,45 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: sessionData, isPending } = authClient.useSession();
 
-  // Bootstrap — check existing session
-  useEffect(() => {
-    const checkSession = async () => {
-      try {
-        if (USE_MOCK) {
-          // Check local storage for mock session instead of auto-login
-          const stored = localStorage.getItem("atlas_mock_user");
-          if (stored) {
-            setUser(JSON.parse(stored));
-          } else {
-            setUser(null);
-          }
-        } else {
-          const { authApi } = await import("@/lib/api/client");
-          const u = await authApi.getCurrentUser();
-          setUser(u);
-        }
-      } catch {
-        setUser(null);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    checkSession();
-  }, []);
+  const user: User | null = sessionData?.user ? {
+    id: sessionData.user.id,
+    name: sessionData.user.name,
+    email: sessionData.user.email,
+    avatarUrl: sessionData.user.image ?? undefined,
+    createdAt: sessionData.user.createdAt.toISOString()
+  } : null;
 
   const login = useCallback(async (email: string, password: string) => {
-    if (USE_MOCK) {
-      const { user } = await mockAuth.login(email, password);
-      localStorage.setItem("atlas_mock_user", JSON.stringify(user));
-      setUser(user);
-    } else {
-      const { authApi } = await import("@/lib/api/client");
-      const { user } = await authApi.login({ email, password });
-      setUser(user);
+    const { error } = await authClient.signIn.email({ email, password });
+    if (error) {
+      throw new Error(error.message || "Failed to login");
     }
   }, []);
 
   const signup = useCallback(async (name: string, email: string, password: string) => {
-    if (USE_MOCK) {
-      const { user } = await mockAuth.signup();
-      localStorage.setItem("atlas_mock_user", JSON.stringify(user));
-      setUser(user);
-    } else {
-      const { authApi } = await import("@/lib/api/client");
-      const { user } = await authApi.signup({ name, email, password });
-      setUser(user);
+    const { error } = await authClient.signUp.email({ name, email, password });
+    if (error) {
+      throw new Error(error.message || "Failed to sign up");
     }
   }, []);
 
   const logout = useCallback(async () => {
-    if (USE_MOCK) {
-      await mockAuth.logout();
-      localStorage.removeItem("atlas_mock_user");
-    } else {
-      const { authApi } = await import("@/lib/api/client");
-      await authApi.logout();
-    }
-    setUser(null);
+    await authClient.signOut();
   }, []);
 
+  const value = useMemo(() => ({
+    user,
+    isLoading: isPending,
+    isAuthenticated: !!user,
+    login,
+    signup,
+    logout,
+  }), [user, isPending, login, signup, logout]);
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, isAuthenticated: !!user, login, signup, logout }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

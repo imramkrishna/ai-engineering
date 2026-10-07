@@ -107,10 +107,6 @@ export const api = new ApiClient(BASE_URL);
 
 // ─── Auth ─────────────────────────────────────────────────────
 export const authApi = {
-  login: (data: LoginRequest) => api.post<{ user: User }>("/auth/login", data),
-  signup: (data: SignupRequest) => api.post<{ user: User }>("/auth/signup", data),
-  logout: () => api.post<void>("/auth/logout"),
-  getCurrentUser: () => api.get<User>("/auth/me"),
   forgotPassword: (data: ForgotPasswordRequest) => api.post<void>("/auth/forgot-password", data),
 };
 

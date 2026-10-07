@@ -17,7 +17,7 @@ import {
 import { useAuth } from "@/lib/auth/context";
 import { mockConversationsApi, mockDocumentsApi, mockAccountApi } from "@/lib/mock";
 import type { Conversation, Document, UsageStats } from "@/types";
-import { Card, Skeleton, Button, StatusBadge } from "@/components/ui";
+import { Card, Skeleton, Button } from "@/components/ui";
 import { formatRelativeDate, formatBytes, truncate } from "@/lib/utils";
 
 // Can't import from documents component directly in this page without circular issues
