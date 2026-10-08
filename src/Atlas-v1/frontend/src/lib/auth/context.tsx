@@ -1,8 +1,8 @@
 "use client";
 
-import React, { createContext, useContext, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useCallback, useMemo, useEffect } from "react";
 import type { User } from "@/types";
-import { authClient } from "@/lib/auth-client";
+import { mockAuthClient } from "@/lib/mock-auth-client";
 
 interface AuthContextValue {
   user: User | null;
@@ -16,34 +16,34 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { data: sessionData, isPending } = authClient.useSession();
+  const { data: sessionData, isPending } = mockAuthClient.useSession();
 
   const user: User | null = sessionData?.user ? {
-    id: sessionData.user.id,
-    name: sessionData.user.name,
-    email: sessionData.user.email,
-    avatarUrl: sessionData.user.image ?? undefined,
-    createdAt: sessionData.user.createdAt instanceof Date
-      ? sessionData.user.createdAt.toISOString()
-      : String(sessionData.user.createdAt),
+    id: sessionData.user?.id,
+    name: sessionData.user?.name,
+    email: sessionData.user?.email,
+    avatarUrl: sessionData.user?.avatarUrl ?? undefined,
+    createdAt: sessionData.user?.createdAt ?? new Date().toISOString(),
   } : null;
 
   const login = useCallback(async (email: string, password: string) => {
-    const { error } = await authClient.signIn.email({ email, password });
-    if (error) {
-      throw new Error(error.message || "Failed to login");
+    try {
+      await mockAuthClient.signIn.email({ email, password });
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : "Login failed");
     }
   }, []);
 
   const signup = useCallback(async (name: string, email: string, password: string) => {
-    const { error } = await authClient.signUp.email({ name, email, password });
-    if (error) {
-      throw new Error(error.message || "Failed to sign up");
+    try {
+      await mockAuthClient.signUp.email({ name, email, password });
+    } catch (error) {
+      throw new Error(error instanceof Error ? error.message : "Signup failed");
     }
   }, []);
 
   const logout = useCallback(async () => {
-    await authClient.signOut();
+    await mockAuthClient.signOut();
   }, []);
 
   const value = useMemo(() => ({
