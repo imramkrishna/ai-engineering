@@ -20,14 +20,15 @@ export async function saveDocument(params: {
   storageKey: string;
 }) {
   const { name, userId, mimeType, size, storageKey } = params;
-  await db.insert(documents).values({
+  const inserted=await db.insert(documents).values({
     name,
     userId,
     mimeType,
     size,
     storageKey,
-  });
+  }).returning({id:documents.id});
   console.log("Saved Document to the database : ", name, storageKey);
+  return inserted[0]?.id
 }
 export async function uploadFileToS3(params: {
   bucket: string;

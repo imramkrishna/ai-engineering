@@ -1,8 +1,7 @@
 import type { Request, Response } from "express";
-import upload from "../config/multer.config.js";
 import { saveDocument, uploadFileToS3 } from "../config/s3-services.js";
 import { env } from "../../../utils/getEnv.js";
-
+import { injestionQueue } from "../config/redis.config.js";
 // Extend Express Request type to include multer's file property
 interface MulterRequest extends Request {
   file?: Express.Multer.File;
@@ -26,14 +25,21 @@ export const uploadDocumentsController = async (
       mimetype: req.file.mimetype,
     });
     console.log("Uploaded Document to S3 : ", key);
-    await saveDocument({
+    let storageKey = `${env.S3_PUBLIC_DEPLOYMENT_URL}/${key}`;
+    const documentId = await saveDocument({
       name: req.file.originalname,
       userId: "1",
       mimeType: req.file.mimetype,
       size: req.file.size,
-      storageKey: `${env.S3_PUBLIC_DEPLOYMENT_URL}/${key}`,
+      storageKey: storageKey,
     });
     console.log("Saved Document in the database. ");
+    console.log("Adding task to the queue : ");
+    const job = await injestionQueue.add(`injest-document`, {
+      documentId,
+      storageKey
+    });
+    console.log("Job added to the queue : ", job);
     return res.status(200).json({
       message: "Upload Successful.",
       documentName: req.file.filename,
