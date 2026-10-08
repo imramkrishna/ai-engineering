@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import upload from "../config/multer.config";
+import upload from "../config/multer.config.js";
 
 export const uploadDocumentsController = async (
   req: Request,
@@ -7,11 +7,11 @@ export const uploadDocumentsController = async (
 ) => {
   try {
     // Use multer middleware to handle file upload
-    upload.single('file')(req, res, (err: Error | null) => {
+    upload.single('file')(req, res, (err: string | null) => {
       if (err) {
         return res.status(400).json({
           message: "File upload failed.",
-          error: err.message,
+          error: err,
         });
       }
 
