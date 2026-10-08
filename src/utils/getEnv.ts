@@ -105,9 +105,11 @@ export const env = {
   BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
 
   /** S3 OBJECT STORAGE - cloud storage settings */
+  S3_BUCKET_NAME:process.env.S3_BUCKET_NAME,
   S3_API: process.env.S3_API,
   S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID,
   S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY,
   S3_TOKEN_VALUE: process.env.S3_TOKEN_VALUE,
   S3_BUCKET: process.env.S3_BUCKET,
+  S3_PUBLIC_DEPLOYMENT_URL:process.env.S3_PUBLIC_DEPLOYMENT_URL
 };

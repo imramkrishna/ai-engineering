@@ -1,5 +1,4 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3";
-import type { Request } from "express";
 import { S3 } from "./s3.config.js";
 import db from "../../../packages/db/client.js";
 import { documents } from "../../../packages/db/index.js";
@@ -13,13 +12,14 @@ function generateKey(fileName: string): string {
   return `${fileName}-${Math.floor(Math.random() * 1000)}-${timestamp}`;
 }
 
-async function saveDocument(
-  name: string,
-  userId: string,
-  mimeType: string,
-  size: number,
-  storageKey: string,
-) {
+export async function saveDocument(params: {
+  name: string;
+  userId: string;
+  mimeType: string;
+  size: number;
+  storageKey: string;
+}) {
+  const { name, userId, mimeType, size, storageKey } = params;
   await db.insert(documents).values({
     name,
     userId,
