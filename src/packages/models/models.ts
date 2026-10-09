@@ -3,7 +3,6 @@ import dotenv from "dotenv";
 import { ChatOpenRouter } from "@langchain/openrouter";
 import { OpenAIEmbeddings } from "@langchain/openai";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-
 //Added path to avoid failure while executing the file from other terminal session other than its root dir which is ai-engineering
  
 dotenv.config({ path: "/Users/ramkrishnayadav/ai-engineering/.env" });
@@ -50,3 +49,4 @@ export function getBackupChatModel() {
     model: googleModel,
   });
 }
+
