@@ -119,7 +119,7 @@ export const authApi = {
 // We simulate GET endpoints using localStorage for UI purposes.
 export const conversationsApi = {
   sendMessage: (conversationId: string, data: SendMessageRequest) =>
-    api.post<SendMessageResponse>(`/chat/${conversationId}`, { conversationId, query: data.content }),
+    api.post<SendMessageResponse>(`/chat/conversation/${conversationId}`, { conversationId, query: data.content }),
   newChat: (data: SendMessageRequest) =>
     api.post<NewChatResponse>("/chat/new", { query: data.content }),
   // Simulated GET endpoints using localStorage

@@ -95,7 +95,7 @@ export const newChatController = async (req: Request, res: Response) => {
     if (!session?.user) {
       return res.status(401).json({
         success: false,
-        message: "Unauthorized",
+        message: "Unauthorized.",
       });
     }
     if (typeof query !== "string" || !query.trim()) {
@@ -129,7 +129,7 @@ export const newChatController = async (req: Request, res: Response) => {
       source: string;
       documentId: string;
       documentName: string;
-      page: number | null;
+      metadata?: unknown;
       similarity: number;
     }[] = [];
 
@@ -156,7 +156,7 @@ export const newChatController = async (req: Request, res: Response) => {
           ? response.content
           : JSON.stringify(response.content);
 
-      let sources = chunks.map((chunk, index) => ({
+      sources = chunks.map((chunk, index) => ({
         source: `Source ${index + 1}`,
         documentId: chunk.documentId,
         documentName: chunk.documentName,
@@ -178,10 +178,19 @@ export const newChatController = async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.log("Error creating chat:", error);
+    console.error("Error creating chat:", error);
+    if (error instanceof Error) {
+      console.error("Error details:", error.message);
+      console.error("Stack trace:\n", error.stack);
+    } else {
+      console.error("Non-Error thrown:", JSON.stringify(error, null, 2));
+    }
     return res.status(500).json({
       success: false,
       message: "Error while processing your request.",
+      ...(process.env.NODE_ENV !== "production"
+        ? { error: error instanceof Error ? error.message : "Unknown error" }
+        : {}),
     });
   }
 };
