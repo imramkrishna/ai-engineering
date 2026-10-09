@@ -29,21 +29,19 @@ export default function ConversationPage() {
     const load = async () => {
       setIsLoading(true);
       try {
-        // Load conversation details
+        // Load conversation details (from localStorage until a GET endpoint exists)
         const conv = await conversationsApi.get(conversationId);
         setConversation(conv);
 
-        // Load messages for this conversation
+        // Load messages for this conversation from the real API
         const msgs = await conversationsApi.getMessages(conversationId);
         setMessages(msgs);
 
-        // For sidebar, we'll load from localStorage since backend doesn't expose list
-        const stored = localStorage.getItem("atlas-conversations");
-        const convs = stored ? JSON.parse(stored) : [];
+        // For sidebar, load all conversations from the real API list endpoint
+        const convs = await conversationsApi.list();
         setConversations(convs);
       } catch (error) {
         console.error("Failed to load conversation:", error);
-        // Set empty state on error
         setConversation(null);
         setMessages([]);
         setConversations([]);

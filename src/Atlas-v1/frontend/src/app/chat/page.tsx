@@ -9,33 +9,26 @@ import { EmptyState, Button, Skeleton } from "@/components/ui";
 import { ConversationItem } from "@/components/chat";
 import { conversationsApi } from "@/lib/api/client";
 
-// Helper functions for localStorage persistence
-const CONVERSATIONS_STORAGE_KEY = "atlas-conversations";
-
-function loadConversations(): Conversation[] {
-  try {
-    const stored = localStorage.getItem(CONVERSATIONS_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveConversations(conversations: Conversation[]): void {
-  try {
-    localStorage.setItem(CONVERSATIONS_STORAGE_KEY, JSON.stringify(conversations));
-  } catch {}
-}
-
 export default function ChatIndexPage() {
   const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const loaded = loadConversations();
-    setConversations(loaded);
-    setIsLoading(false);
+    const loadConversations = async () => {
+      try {
+        setIsLoading(true);
+        const data = await conversationsApi.list();
+        setConversations(data);
+      } catch (error) {
+        console.error("Failed to load conversations:", error);
+        toast.error(error instanceof Error ? error.message : "Failed to load conversations");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadConversations();
   }, []);
 
   const handleNew = async () => {
@@ -43,19 +36,31 @@ export default function ChatIndexPage() {
   };
 
   const handleDelete = async (id: string) => {
-    const updated = conversations.filter((c) => c.id !== id);
-    setConversations(updated);
-    saveConversations(updated);
+    try {
+      const updated = conversations.filter((c) => c.id !== id);
+      setConversations(updated);
+      // Note: Backend doesn't have a delete endpoint yet, so we only update local state
+      // In a real implementation, we would call a delete API endpoint
+    } catch (error) {
+      console.error("Failed to delete conversation:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to delete conversation");
+    }
   };
 
   const handleRename = async (id: string) => {
     const title = prompt("New conversation name:");
     if (!title) return;
-    const updated = conversations.map((c) =>
-      c.id === id ? { ...c, title, updatedAt: new Date().toISOString() } : c
-    );
-    setConversations(updated);
-    saveConversations(updated);
+    try {
+      const updated = conversations.map((c) =>
+        c.id === id ? { ...c, title, updatedAt: new Date().toISOString() } : c
+      );
+      setConversations(updated);
+      // Note: Backend doesn't have a rename endpoint yet, so we only update local state
+      // In a real implementation, we would call a rename API endpoint
+    } catch (error) {
+      console.error("Failed to rename conversation:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to rename conversation");
+    }
   };
 
   return (

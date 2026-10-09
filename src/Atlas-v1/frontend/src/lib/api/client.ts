@@ -111,17 +111,19 @@ export const authApi = {
 };
 
 // ─── Conversations / Chat ────────────────────────────────────────────
-// The backend exposes only the following routes:
-//   POST /api/v1/chat/:id   - continue existing conversation
-//   POST /api/v1/chat/new   - create new conversation + first message
-// Message/conversation listing is persisted client-side (localStorage) because
-// the backend does not expose those endpoints.
-// We simulate GET endpoints using localStorage for UI purposes.
+// The backend exposes the following routes:
+//   GET  /api/v1/chat/list   - list all conversations for the authenticated user
+//   POST /api/v1/chat/:id    - continue existing conversation
+//   POST /api/v1/chat/new    - create new conversation + first message
+// Message listing is persisted client-side (localStorage) since the backend
+// does not expose a get-messages endpoint. We simulate those GET endpoints.
 export const conversationsApi = {
   sendMessage: (conversationId: string, data: SendMessageRequest) =>
     api.post<SendMessageResponse>(`/chat/conversation/${conversationId}`, { conversationId, query: data.content }),
   newChat: (data: SendMessageRequest) =>
     api.post<NewChatResponse>("/chat/new", { query: data.content }),
+  list: (): Promise<Conversation[]> =>
+    api.get<Conversation[]>("/chat/list"),
   // Simulated GET endpoints using localStorage
   get: (id: string): Promise<Conversation | null> => {
     const stored = localStorage.getItem("atlas-conversations");
@@ -130,11 +132,10 @@ export const conversationsApi = {
     const conversation = conversations.find(c => c.id === id);
     return Promise.resolve(conversation ?? null);
   },
-  getMessages: (conversationId: string): Promise<Message[]> => {
-    const stored = localStorage.getItem(`atlas-messages-${conversationId}`);
-    if (!stored) return Promise.resolve([]);
-    return Promise.resolve(JSON.parse(stored));
-  },
+  getMessages: (conversationId: string): Promise<Message[]> =>
+    api.get<{ success: boolean; messages?: Message[]; message?: string }>(`/chat/conversation/${conversationId}`).then(
+      (res) => res.messages ?? [],
+    ),
 };
 
 // ─── Documents ────────────────────────────────────────────────

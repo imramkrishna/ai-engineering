@@ -44,6 +44,21 @@ export async function conversationExists(
   }
 }
 
+export async function listConversations(userId: string) {
+  const convList = await db
+    .select({
+      id: conversations.id,
+      title: conversations.title,
+      createdAt: conversations.createdAt,
+      updatedAt: conversations.updatedAt,
+      userId: conversations.userId,
+    })
+    .from(conversations)
+    .where(eq(conversations.userId, userId))
+    .orderBy(desc(conversations.createdAt));
+  return convList;
+}
+
 export async function getMessages(conversationId: string) {
   const conversationMessages = await db
     .select()

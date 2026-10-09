@@ -4,6 +4,7 @@ import {
   conversationExists,
   generateLangchainMessages,
   getMessages,
+  listConversations,
   retrieveRelevantChunks,
   saveMessage,
 } from "../lib/queries.js";
@@ -80,6 +81,71 @@ export const chatController = async (req: Request, res: Response) => {
     return res.status(500).json({
       success: false,
       message: "Error while processing your request.",
+    });
+  }
+};
+
+export const listConversationsController = async (req: Request, res: Response) => {
+  const session = await auth.api.getSession({
+    headers: new Headers(req.headers as Record<string, string>),
+  });
+
+  if (!session?.user) {
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized.",
+    });
+  }
+
+  try {
+    const conversations = await listConversations(session.user.id);
+    return res.status(200).json({
+      success: true,
+      conversations,
+    });
+  } catch (error) {
+    console.error("Error listing conversations:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error while listing conversations.",
+    });
+  }
+};
+
+export const getMessagesController = async (req: Request, res: Response) => {
+  const conversationId = Array.isArray(req.params.conversationId)
+    ? req.params.conversationId[0]
+    : req.params.conversationId;
+
+  if (!conversationId) {
+    return res.status(400).json({
+      success: false,
+      message: "Conversation ID is required.",
+    });
+  }
+
+  const session = await auth.api.getSession({
+    headers: new Headers(req.headers as Record<string, string>),
+  });
+
+  if (!session?.user) {
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized.",
+    });
+  }
+
+  try {
+    const messages = await getMessages(conversationId);
+    return res.status(200).json({
+      success: true,
+      messages,
+    });
+  } catch (error) {
+    console.error("Error fetching messages:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error while fetching messages.",
     });
   }
 };
