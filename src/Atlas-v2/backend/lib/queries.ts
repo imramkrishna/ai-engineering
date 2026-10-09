@@ -36,12 +36,14 @@ export async function conversationExists(
   conversationId: string,
   userId: string,
 ): Promise<boolean> {
-  const conversation = await db.select().from(conversations);
-  if (!conversation || conversation.length < 0) {
-    return false;
-  } else {
-    return true;
-  }
+  const conversation = await db
+    .select()
+    .from(conversations)
+    .where(
+      and(eq(conversations.id, conversationId), eq(conversations.userId, userId)),
+    )
+    .limit(1);
+  return conversation.length > 0;
 }
 
 export async function listConversations(userId: string) {

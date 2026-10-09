@@ -4,7 +4,7 @@ async function runEval() {
   const result = await correctnessEvaluator({
     inputs: "What is the capital of France?",
     outputs: "The capital of France is Paris.",
-    reference_outputs:"Paris"
+    reference_outputs:"Paris",
     // You can also pass context or reference outputs depending on the prompt
   })
 

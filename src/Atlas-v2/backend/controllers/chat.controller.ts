@@ -14,6 +14,22 @@ import { conversations, db, messages } from "../../../packages/db/index.js";
 const chatModel = getChatModel();
 export const chatController = async (req: Request, res: Response) => {
   const { conversationId, query } = req.body;
+
+  // Validate input
+  if (!conversationId || typeof conversationId !== "string") {
+    return res.status(400).json({
+      success: false,
+      message: "Valid conversationId is required.",
+    });
+  }
+
+  if (!query || typeof query !== "string" || !query.trim()) {
+    return res.status(400).json({
+      success: false,
+      message: "A valid query is required.",
+    });
+  }
+
   const session = await auth.api.getSession({
     headers: new Headers(req.headers as Record<string, string>),
   });
@@ -29,9 +45,9 @@ export const chatController = async (req: Request, res: Response) => {
       session.user.id,
     );
     if (!conversation) {
-      return res.status(402).json({
+      return res.status(404).json({
         success: false,
-        message: "user not found",
+        message: "Conversation not found",
       });
     }
     const previousMessages = await getMessages(conversationId);
@@ -60,7 +76,7 @@ export const chatController = async (req: Request, res: Response) => {
       ...history,
       new HumanMessage(`Context:\n${context}\n\nQuestion:\n${query}`),
     ]);
-    let sources = chunks.map((chunk, index) => ({
+    const sources = chunks.map((chunk, index) => ({
       source: `Source ${index + 1}`,
       documentId: chunk.documentId,
       documentName: chunk.documentName,
@@ -78,9 +94,13 @@ export const chatController = async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
+    console.error("Error in chatController:", error);
     return res.status(500).json({
       success: false,
       message: "Error while processing your request.",
+      ...(process.env.NODE_ENV !== "production"
+        ? { error: error instanceof Error ? error.message : "Unknown error" }
+        : {}),
     });
   }
 };
