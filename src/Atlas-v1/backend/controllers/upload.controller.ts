@@ -35,10 +35,22 @@ export const uploadDocumentsController = async (
     });
     console.log("Saved Document in the database. ");
     console.log("Adding task to the queue : ");
-    const job = await injestionQueue.add(`injest-document`, {
-      documentId,
-      storageKey
-    });
+    const job = await injestionQueue.add(
+      `injest-document`,
+      {
+        documentId,
+        storageKey,
+      },
+      {
+        attempts: 3,
+        backoff: {
+          type: "exponential",
+          delay: 2000,
+        },
+        removeOnComplete: 1000,
+        removeOnFail: false,
+      },
+    );
     console.log("Job added to the queue : ", job);
     return res.status(200).json({
       message: "Upload Successful.",

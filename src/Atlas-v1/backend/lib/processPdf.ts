@@ -1,6 +1,6 @@
 import { Document } from "langchain";
 import { PDFParse } from "pdf-parse";
-async function processPdf(url: string) {
+async function processPdf(url: string,documentId?:string) {
   const response = await fetch(url);
 
   if (!response.ok) {
@@ -16,9 +16,18 @@ async function processPdf(url: string) {
 
   try {
     const result = await parser.getText();
-    return new Document({
-      pageContent: result.text,
+    const pages = result.pages;
+    const pageDocuments = pages.map((page, index) => {
+      return new Document({
+        pageContent: page.text,
+        metadata: {
+          pageNumber: page.num,
+          source: url,
+          documentId
+        },
+      });
     });
+    return pageDocuments;
   } finally {
     await parser.destroy();
   }

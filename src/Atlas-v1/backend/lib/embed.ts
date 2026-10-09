@@ -2,7 +2,7 @@ import type { Document } from "langchain";
 import { getEmbeddingsModel } from "../../../packages/models/models.js";
 
 const embeddingModel = getEmbeddingsModel();
-async function embedChunks(chunks: Document[]) {
+export async function embedChunks(chunks: Document[]) {
   const batchSize = 128;
   const embeddings = [];
   for (let i = 0; i < chunks.length; i += batchSize) {
