@@ -4,7 +4,12 @@ import processPdf from "./lib/processPdf.js";
 import generateChunks from "./lib/chunks.js";
 import { embedChunks } from "./lib/embed.js";
 import db from "../../packages/db/client.js";
-import { documentChunks } from "../../packages/db/index.js";
+import {
+  documentChunks,
+  documents,
+  ingestionJobs,
+} from "../../packages/db/index.js";
+import { eq } from "drizzle-orm";
 
 const worker = new Worker(
   "injestion-queue",
@@ -26,7 +31,14 @@ const worker = new Worker(
         metadata: chunk.metadata ?? {},
         embedding: embeddings[index],
       }));
-      await db.insert(documentChunks).values(rows);
+      await db.transaction(async (tx) => {
+        await tx.insert(documentChunks).values(rows);
+
+        await tx
+          .update(documents)
+          .set({ status: "completed" })
+          .where(eq(documents.id, documentId));
+      });
       console.log("Chunk inserted into database for document : ", documentId);
     } catch (error) {
       console.error("Document ingestion error:", {
@@ -42,12 +54,25 @@ const worker = new Worker(
   },
 );
 
-worker.on("completed", (job, returnvalue) => {
-  console.log(`✅ Job ${job.id} completed successfully! Result:`, returnvalue);
+worker.on("completed", (job) => {
+  console.log(`✅ Job ${job.id} completed successfully! Result:`);
 });
 
-worker.on("failed", (job, err) => {
-  console.error(`❌ Job ${job} failed with error: ${err.message}`);
+worker.on("failed", async (job, err) => {
+  if (!job) return;
+
+  const maxAttempts = job.opts.attempts ?? 1;
+  const isFinalFailure = job.attemptsMade >= maxAttempts;
+
+  console.error(`Job ${job.id} failed: ${err.message}`);
+
+  if (isFinalFailure) {
+    console.error("All attempts exhausted. Marking document as failed.");
+    await db
+      .update(documents)
+      .set({ status: "completed" })
+      .where(eq(documents.id, job.data.documentId));
+  }
 });
 
 console.log("👷 Worker is running and waiting for jobs from Upstash...");
