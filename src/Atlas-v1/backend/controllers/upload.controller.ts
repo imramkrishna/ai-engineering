@@ -3,6 +3,7 @@ import { saveDocument, uploadFileToS3 } from "../config/s3-services.js";
 import { env } from "../../../utils/getEnv.js";
 import { injestionQueue } from "../config/redis.config.js";
 import { auth } from "../lib/auth.js";
+import { listDocuments } from "../lib/queries.js";
 // Extend Express Request type to include multer's file property
 interface MulterRequest extends Request {
   file?: Express.Multer.File;
@@ -75,5 +76,26 @@ export const uploadDocumentsController = async (
 };
 
 export const getUploadedDocuments=async(req:Request,res:Response)=>{
-  
-}
+  const session = await auth.api.getSession({
+    headers: new Headers(req.headers as Record<string, string>),
+  });
+  if (!session?.user) {
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized",
+    });
+  }
+  try {
+    const documents = await listDocuments(session.user.id);
+    return res.status(200).json({
+      success: true,
+      documents,
+    });
+  } catch (error) {
+    console.log("Error fetching documents", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error while fetching documents",
+    });
+  }
+};

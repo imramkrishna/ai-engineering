@@ -9,6 +9,29 @@ import {
 import { embeddingModel } from "../../../Prompt-Lab/models.js";
 import { AIMessage, HumanMessage } from "langchain";
 
+// ─── Document Queries ─────────────────────────────────────────────
+export async function listDocuments(userId: string) {
+  const docList = await db
+    .select({
+      id: documents.id,
+      name: documents.name,
+      mimeType: documents.mimeType,
+      size: documents.size,
+      storageKey: documents.storageKey,
+      contentHash: documents.contentHash,
+      status: documents.status,
+      errorMessage: documents.errorMessage,
+      chunkCount: documents.chunkCount,
+      createdAt: documents.createdAt,
+      updatedAt: documents.updatedAt,
+      processedAt: documents.processedAt,
+    })
+    .from(documents)
+    .where(eq(documents.userId, userId))
+    .orderBy(desc(documents.createdAt));
+  return docList;
+}
+
 export async function conversationExists(
   conversationId: string,
   userId: string,

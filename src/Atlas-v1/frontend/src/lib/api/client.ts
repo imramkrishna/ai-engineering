@@ -15,6 +15,7 @@ import type {
   UsageStats,
   AppSettings,
   PaginatedResponse,
+  DocumentStatus,
 } from "@/types";
 
 // ─── API Client ───────────────────────────────────────────────
@@ -136,12 +137,20 @@ export const conversationsApi = {
 };
 
 // ─── Documents ────────────────────────────────────────────────
-// The backend exposes only: POST /api/v1/upload/new-document
+// The backend exposes: POST /api/v1/upload/new-document, GET /api/v1/upload/documents
+// Response shape: { success: boolean; documents?: Document[]; message?: string }
 export const documentsApi = {
   upload: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
     return api.upload<{ message: string; documentName: string }>(`/upload/new-document`, fd);
+  },
+  getAll: async (): Promise<Document[]> => {
+    const res = await api.get<{ success: boolean; documents?: BackendDocument[]; message?: string }>("/upload/documents");
+    if (!res.success) {
+      throw new Error(res.message || "Failed to fetch documents");
+    }
+    return (res.documents ?? []).map(toFrontendDocument);
   },
   // Simulated DELETE/Retry via localStorage (backend has no list/delete/retry endpoints)
   delete: async (id: string) => {
@@ -162,6 +171,39 @@ export const documentsApi = {
     return Promise.resolve();
   },
 };
+
+// ─── Backend ↔ Frontend Document Mapping ──────────────────────
+// Backend returns different field names than the frontend Document type:
+//   Backend:  name, mimeType, size, status, chunkCount, errorMessage, createdAt, updatedAt, processedAt
+//   Frontend: title, filename, fileType, fileSizeBytes, status, chunkCount, uploadedAt, errorMessage, userId
+interface BackendDocument {
+  id: string;
+  name: string;
+  mimeType: string;
+  size: number;
+  status: DocumentStatus;
+  chunkCount?: number;
+  errorMessage?: string;
+  createdAt: Date | string;
+  updatedAt?: Date | string;
+  processedAt?: Date | string;
+}
+
+function toFrontendDocument(d: BackendDocument): Document {
+  return {
+    id: d.id,
+    title: d.name,
+    filename: d.name,
+    fileType: d.mimeType,
+    fileSizeBytes: d.size,
+    status: d.status,
+    chunkCount: d.chunkCount,
+    uploadedAt: d.createdAt instanceof Date ? d.createdAt.toISOString() : String(d.createdAt),
+    updatedAt: d.updatedAt ? (d.updatedAt instanceof Date ? d.updatedAt.toISOString() : String(d.updatedAt)) : undefined,
+    errorMessage: d.errorMessage,
+    userId: "", // Not returned by listDocuments query
+  };
+}
 
 // ─── Search ───────────────────────────────────────────────────
 export const searchApi = {
@@ -193,4 +235,9 @@ export const accountApi = {
 export const settingsApi = {
   get: () => api.get<AppSettings>("/settings"),
   update: (settings: Partial<AppSettings>) => api.patch<AppSettings>("/settings", settings),
+};
+
+// ─── Health Check ─────────────────────────────────────────────
+export const healthApi = {
+  check: () => api.get<{ status: string; timestamp: string }>("/"),
 };

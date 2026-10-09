@@ -41,9 +41,8 @@ export default function DocumentsPage() {
     setIsLoading(true);
     setIsError(false);
     try {
-      // Since backend doesn't have a list endpoint, we'll use localStorage
-      const stored = localStorage.getItem("atlas-documents");
-      let docs: Document[] = stored ? JSON.parse(stored) : [];
+      const res = await documentsApi.getAll();
+      let docs: Document[] = res;
 
       // Apply filters
       if (q) {
@@ -58,8 +57,9 @@ export default function DocumentsPage() {
       }
 
       setDocuments(docs);
-    } catch {
+    } catch (error) {
       setIsError(true);
+      toast.error(error instanceof Error ? error.message : "Failed to load documents");
     } finally {
       setIsLoading(false);
     }
