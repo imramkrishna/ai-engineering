@@ -1,8 +1,10 @@
 import { pgTable, uuid, text, timestamp, varchar } from "drizzle-orm/pg-core";
+import { user } from "./auth-schema.js";
 
 export const conversations = pgTable("conversations", {
   id: uuid("id").defaultRandom().primaryKey(),
   title: varchar("title", { length: 255 }).default("Untilted"),
+  userId: text("user_id").references(() => user.id),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

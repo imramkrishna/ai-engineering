@@ -78,7 +78,7 @@ export const documentChunks = pgTable(
   "document_chunks",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-
+    userId:text("user_id").references(()=>user.id),
     documentId: uuid("document_id")
       .notNull()
       .references(() => documents.id, { onDelete: "cascade" }),

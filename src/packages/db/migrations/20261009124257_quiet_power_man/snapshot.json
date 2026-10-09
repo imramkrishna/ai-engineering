@@ -1,9 +1,9 @@
 {
   "version": "8",
   "dialect": "postgres",
-  "id": "2407293b-76b9-4cd9-8a6a-4439da932753",
+  "id": "912d41a8-ae92-41be-bd41-877d424bf4fd",
   "prevIds": [
-    "fe93f5e1-18db-40c1-9904-619f7763ea18"
+    "00000000-0000-0000-0000-000000000000"
   ],
   "ddl": [
     {
@@ -104,6 +104,19 @@
       "generated": null,
       "identity": null,
       "name": "title",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "conversations"
+    },
+    {
+      "type": "text",
+      "typeSchema": null,
+      "notNull": false,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "user_id",
       "entityType": "columns",
       "schema": "public",
       "table": "conversations"
@@ -1203,6 +1216,23 @@
       "entityType": "indexes",
       "schema": "public",
       "table": "ingestion_jobs"
+    },
+    {
+      "nameExplicit": false,
+      "columns": [
+        "user_id"
+      ],
+      "schemaTo": "public",
+      "tableTo": "user",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "name": "conversations_user_id_user_id_fkey",
+      "entityType": "fks",
+      "schema": "public",
+      "table": "conversations"
     },
     {
       "nameExplicit": false,

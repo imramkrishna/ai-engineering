@@ -1,0 +1,2 @@
+ALTER TABLE "document_chunks" ADD COLUMN "user_id" text;--> statement-breakpoint
+ALTER TABLE "document_chunks" ADD CONSTRAINT "document_chunks_user_id_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "user"("id");

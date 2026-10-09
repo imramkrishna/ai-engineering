@@ -70,7 +70,7 @@ worker.on("failed", async (job, err) => {
     console.error("All attempts exhausted. Marking document as failed.");
     await db
       .update(documents)
-      .set({ status: "completed" })
+      .set({ status: "completed" })s
       .where(eq(documents.id, job.data.documentId));
   }
 });
