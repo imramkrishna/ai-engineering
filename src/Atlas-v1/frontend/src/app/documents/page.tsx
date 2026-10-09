@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Grid3X3, List, Filter, Plus } from "lucide-react";
-import { mockDocumentsApi } from "@/lib/mock";
+import { toast } from "sonner";
 import type { Document, DocumentStatus } from "@/types";
 import { PageHeader, Button, Input, EmptyState, ErrorState } from "@/components/ui";
 import {
@@ -13,6 +13,7 @@ import {
   UploadDropzone,
 } from "@/components/documents";
 import { debounce } from "@/lib/utils";
+import { documentsApi } from "@/lib/api/client";
 
 type ViewMode = "grid" | "table";
 type FilterStatus = "all" | DocumentStatus;
@@ -40,11 +41,23 @@ export default function DocumentsPage() {
     setIsLoading(true);
     setIsError(false);
     try {
-      const res = await mockDocumentsApi.list({
-        search: q,
-        status: status && status !== "all" ? status : undefined,
-      });
-      setDocuments(res.data);
+      // Since backend doesn't have a list endpoint, we'll use localStorage
+      const stored = localStorage.getItem("atlas-documents");
+      let docs: Document[] = stored ? JSON.parse(stored) : [];
+
+      // Apply filters
+      if (q) {
+        docs = docs.filter(doc =>
+          doc.title.toLowerCase().includes(q.toLowerCase()) ||
+          (doc.filename && doc.filename.toLowerCase().includes(q.toLowerCase()))
+        );
+      }
+
+      if (status && status !== "all") {
+        docs = docs.filter(doc => doc.status === status);
+      }
+
+      setDocuments(docs);
     } catch {
       setIsError(true);
     } finally {
@@ -73,10 +86,13 @@ export default function DocumentsPage() {
     setIsUploading(true);
     try {
       for (const file of files) {
-        await mockDocumentsApi.upload(file);
+        await documentsApi.upload(file);
+        toast.success(`Document "${file.name}" uploaded successfully!`);
       }
       setShowUpload(false);
       await loadDocuments(search, statusFilter);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Upload failed");
     } finally {
       setIsUploading(false);
     }
@@ -84,12 +100,12 @@ export default function DocumentsPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this document? This action cannot be undone.")) return;
-    await mockDocumentsApi.delete(id);
+    await documentsApi.delete(id);
     setDocuments((d) => d.filter((x) => x.id !== id));
   };
 
   const handleRetry = async (id: string) => {
-    await mockDocumentsApi.retry(id);
+    await documentsApi.retry(id);
     setDocuments((d) => d.map((x) => (x.id === id ? { ...x, status: "processing" } : x)));
   };
 

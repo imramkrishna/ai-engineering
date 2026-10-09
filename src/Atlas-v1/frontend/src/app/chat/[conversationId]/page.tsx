@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Plus, ArrowLeft } from "lucide-react";
-import { mockConversationsApi } from "@/lib/mock";
+import { conversationsApi } from "@/lib/api/client";
 import type { Conversation, Message } from "@/types";
 import { shortId } from "@/lib/utils";
 import { EmptyState, Skeleton } from "@/components/ui";
@@ -28,15 +28,28 @@ export default function ConversationPage() {
   useEffect(() => {
     const load = async () => {
       setIsLoading(true);
-      const [conv, convs, msgs] = await Promise.all([
-        mockConversationsApi.get(conversationId),
-        mockConversationsApi.list(),
-        mockConversationsApi.getMessages(conversationId),
-      ]);
-      setConversation(conv);
-      setConversations(convs);
-      setMessages(msgs);
-      setIsLoading(false);
+      try {
+        // Load conversation details
+        const conv = await conversationsApi.get(conversationId);
+        setConversation(conv);
+
+        // Load messages for this conversation
+        const msgs = await conversationsApi.getMessages(conversationId);
+        setMessages(msgs);
+
+        // For sidebar, we'll load from localStorage since backend doesn't expose list
+        const stored = localStorage.getItem("atlas-conversations");
+        const convs = stored ? JSON.parse(stored) : [];
+        setConversations(convs);
+      } catch (error) {
+        console.error("Failed to load conversation:", error);
+        // Set empty state on error
+        setConversation(null);
+        setMessages([]);
+        setConversations([]);
+      } finally {
+        setIsLoading(false);
+      }
     };
     load();
   }, [conversationId]);
@@ -79,12 +92,38 @@ export default function ConversationPage() {
     setIsSending(true);
 
     try {
-      const response = await mockConversationsApi.sendMessage(conversationId, content);
+      const response = await conversationsApi.sendMessage(conversationId, { content });
       setMessages((m) => {
         const without = m.filter((x) => !x.isStreaming);
         return [...without, response.message];
       });
-    } catch {
+
+      // Store messages in localStorage for persistence
+      const updatedMessages = [...messages, optimisticUser, response.message];
+      localStorage.setItem(`atlas-messages-${conversationId}`, JSON.stringify(updatedMessages));
+
+      // Update conversation title if it's the first message
+      if (messages.length === 0 && conversation) {
+        const title = content.length > 50 ? content.substring(0, 50) + "..." : content;
+        setConversation((prev) => (prev ? { ...prev, title } : prev));
+
+        // Update in conversations list
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === conversationId ? { ...c, title, updatedAt: new Date().toISOString() } : c
+          )
+        );
+
+        // Save to localStorage
+        const stored = localStorage.getItem("atlas-conversations");
+        const convs = stored ? JSON.parse(stored) : [];
+        const updatedConvs = convs.map((c: Conversation) =>
+          c.id === conversationId ? { ...c, title, updatedAt: new Date().toISOString() } : c
+        );
+        localStorage.setItem("atlas-conversations", JSON.stringify(updatedConvs));
+      }
+    } catch (error) {
+      console.error("Failed to send message:", error);
       setMessages((m) => m.filter((x) => !x.isStreaming));
     } finally {
       setIsSending(false);
@@ -92,22 +131,55 @@ export default function ConversationPage() {
   };
 
   const handleNew = async () => {
-    const conv = await mockConversationsApi.create();
-    router.push(`/chat/${conv.id}`);
+    // Create new conversation via API
+    try {
+      const response = await conversationsApi.newChat({ content: "New conversation" });
+      const newConversation: Conversation = {
+        id: response.conversationId,
+        title: "New conversation",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        userId: "user-1", // Should come from auth
+      };
+
+      // Add to local storage
+      const stored = localStorage.getItem("atlas-conversations");
+      const convs = stored ? JSON.parse(stored) : [];
+      const updated = [...convs, newConversation];
+      localStorage.setItem("atlas-conversations", JSON.stringify(updated));
+      setConversations(updated);
+
+      router.push(`/chat/${response.conversationId}`);
+    } catch (error) {
+      console.error("Failed to create new conversation:", error);
+    }
   };
 
   const handleDelete = async (id: string) => {
-    await mockConversationsApi.delete(id);
-    setConversations((c) => c.filter((x) => x.id !== id));
-    if (id === conversationId) router.push("/chat");
+    // Note: Backend doesn't expose delete endpoint, so we only remove from localStorage
+    const updated = conversations.filter((c) => c.id !== id);
+    setConversations(updated);
+    localStorage.setItem("atlas-conversations", JSON.stringify(updated));
+    
+    if (id === conversationId) {
+      router.push("/chat");
+    }
   };
 
   const handleRename = async (id: string) => {
     const title = prompt("New conversation name:");
     if (!title) return;
-    const updated = await mockConversationsApi.rename(id, title);
-    setConversations((c) => c.map((x) => (x.id === id ? updated : x)));
-    if (id === conversationId) setConversation((c) => c ? { ...c, title } : c);
+
+    // Update in conversations list
+    const updated = conversations.map((c) =>
+      c.id === id ? { ...c, title, updatedAt: new Date().toISOString() } : c
+    );
+    setConversations(updated);
+    localStorage.setItem("atlas-conversations", JSON.stringify(updated));
+
+    if (id === conversationId) {
+      setConversation((prev) => (prev ? { ...prev, title } : prev));
+    }
   };
 
   return (
@@ -147,7 +219,7 @@ export default function ConversationPage() {
             <ArrowLeft size={18} />
           </Link>
           <p className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>
-            {isLoading ? "Loading…" : conversation?.title ?? "Conversation"}
+            {isLoading ? "Loading..." : conversation?.title ?? "Conversation"}
           </p>
         </div>
 

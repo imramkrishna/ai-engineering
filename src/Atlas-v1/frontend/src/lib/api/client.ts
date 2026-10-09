@@ -19,7 +19,7 @@ import type {
 
 // ─── API Client ───────────────────────────────────────────────
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3002/api/v1";
 
 class ApiClient {
   private baseUrl: string;
@@ -108,31 +108,59 @@ export const authApi = {
   forgotPassword: (data: ForgotPasswordRequest) => api.post<void>("/auth/forgot-password", data),
 };
 
-// ─── Conversations ────────────────────────────────────────────
+// ─── Conversations / Chat ────────────────────────────────────────────
+// The backend exposes only the following routes:
+//   POST /api/v1/chat/:id   - continue existing conversation
+//   POST /api/v1/chat/new   - create new conversation + first message
+// Message/conversation listing is persisted client-side (localStorage) because
+// the backend does not expose those endpoints.
+// We simulate GET endpoints using localStorage for UI purposes.
 export const conversationsApi = {
-  list: () => api.get<Conversation[]>("/conversations"),
-  get: (id: string) => api.get<Conversation>(`/conversations/${id}`),
-  create: (title?: string) => api.post<Conversation>("/conversations", { title }),
-  rename: (id: string, title: string) => api.patch<Conversation>(`/conversations/${id}`, { title }),
-  delete: (id: string) => api.delete<void>(`/conversations/${id}`),
-  getMessages: (id: string) => api.get<Message[]>(`/conversations/${id}/messages`),
-  sendMessage: (id: string, data: SendMessageRequest) =>
-    api.post<SendMessageResponse>(`/conversations/${id}/messages`, data),
+  sendMessage: (conversationId: string, data: SendMessageRequest) =>
+    api.post<SendMessageResponse>(`/chat/${conversationId}`, { conversationId, query: data.content }),
+  newChat: (data: SendMessageRequest) =>
+    api.post<SendMessageResponse>("/chat/new", { query: data.content }),
+  // Simulated GET endpoints using localStorage
+  get: (id: string): Promise<Conversation | null> => {
+    const stored = localStorage.getItem("atlas-conversations");
+    if (!stored) return Promise.resolve(null);
+    const conversations: Conversation[] = JSON.parse(stored);
+    const conversation = conversations.find(c => c.id === id);
+    return Promise.resolve(conversation ?? null);
+  },
+  getMessages: (conversationId: string): Promise<Message[]> => {
+    const stored = localStorage.getItem(`atlas-messages-${conversationId}`);
+    if (!stored) return Promise.resolve([]);
+    return Promise.resolve(JSON.parse(stored));
+  },
 };
 
 // ─── Documents ────────────────────────────────────────────────
+// The backend exposes only: POST /api/v1/upload/new-document
 export const documentsApi = {
-  list: (params?: { search?: string; status?: string; page?: number }) =>
-    api.get<PaginatedResponse<Document>>("/documents", params as Record<string, string>),
-  get: (id: string) => api.get<Document>(`/documents/${id}`),
   upload: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);
-    return api.upload<DocumentUploadResponse>("/documents/upload", fd);
+    return api.upload<{ message: string; documentName: string }>(`/upload/new-document`, fd);
   },
-  delete: (id: string) => api.delete<void>(`/documents/${id}`),
-  retry: (id: string) => api.post<Document>(`/documents/${id}/retry`),
-  getStatus: (id: string) => api.get<{ status: string; chunkCount?: number }>(`/documents/${id}/status`),
+  // Simulated DELETE/Retry via localStorage (backend has no list/delete/retry endpoints)
+  delete: async (id: string) => {
+    const stored = localStorage.getItem("atlas-documents");
+    if (stored) {
+      const docs: Document[] = JSON.parse(stored);
+      localStorage.setItem("atlas-documents", JSON.stringify(docs.filter(d => d.id !== id)));
+    }
+    return Promise.resolve();
+  },
+  retry: async (id: string) => {
+    const stored = localStorage.getItem("atlas-documents");
+    if (stored) {
+      const docs: Document[] = JSON.parse(stored);
+      const updated = docs.map(d => (d.id === id ? { ...d, status: "processing" } : d));
+      localStorage.setItem("atlas-documents", JSON.stringify(updated));
+    }
+    return Promise.resolve();
+  },
 };
 
 // ─── Search ───────────────────────────────────────────────────

@@ -3,10 +3,27 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, MessageSquare } from "lucide-react";
-import { mockConversationsApi } from "@/lib/mock";
 import type { Conversation } from "@/types";
 import { EmptyState, Button, Skeleton } from "@/components/ui";
 import { ConversationItem } from "@/components/chat";
+
+// Helper functions for localStorage persistence
+const CONVERSATIONS_STORAGE_KEY = "atlas-conversations";
+
+function loadConversations(): Conversation[] {
+  try {
+    const stored = localStorage.getItem(CONVERSATIONS_STORAGE_KEY);
+    return stored ? JSON.parse(stored) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveConversations(conversations: Conversation[]): void {
+  try {
+    localStorage.setItem(CONVERSATIONS_STORAGE_KEY, JSON.stringify(conversations));
+  } catch {}
+}
 
 export default function ChatIndexPage() {
   const router = useRouter();
@@ -14,24 +31,42 @@ export default function ChatIndexPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    mockConversationsApi.list().then((c) => { setConversations(c); setIsLoading(false); });
+    const loaded = loadConversations();
+    setConversations(loaded);
+    setIsLoading(false);
   }, []);
 
   const handleNew = async () => {
-    const conv = await mockConversationsApi.create();
-    router.push(`/chat/${conv.id}`);
+    // Create a new conversation ID
+    const newId = `conv-${Date.now()}`;
+    const newConversation: Conversation = {
+      id: newId,
+      title: "New conversation",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      userId: "user-1", // This should come from auth context
+    };
+    
+    const updated = [...conversations, newConversation];
+    setConversations(updated);
+    saveConversations(updated);
+    router.push(`/chat/${newId}`);
   };
 
   const handleDelete = async (id: string) => {
-    await mockConversationsApi.delete(id);
-    setConversations((c) => c.filter((x) => x.id !== id));
+    const updated = conversations.filter((c) => c.id !== id);
+    setConversations(updated);
+    saveConversations(updated);
   };
 
   const handleRename = async (id: string) => {
     const title = prompt("New conversation name:");
     if (!title) return;
-    const updated = await mockConversationsApi.rename(id, title);
-    setConversations((c) => c.map((x) => (x.id === id ? updated : x)));
+    const updated = conversations.map((c) =>
+      c.id === id ? { ...c, title, updatedAt: new Date().toISOString() } : c
+    );
+    setConversations(updated);
+    saveConversations(updated);
   };
 
   return (
