@@ -107,6 +107,22 @@ export interface SendMessageResponse {
   conversationId: string;
 }
 
+export interface NewChatResponse {
+  success: boolean;
+  data: {
+    conversationId: string;
+    message: string;
+    sources: Array<{
+      source: string;
+      documentId: string;
+      documentName: string;
+      metadata?: Record<string, unknown>;
+      similarity: number;
+    }>;
+  };
+  message?: string;
+}
+
 // ─── Search / Retrieval ───────────────────────────────────────
 export interface SearchResult {
   id: string;

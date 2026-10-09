@@ -3,9 +3,11 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, MessageSquare } from "lucide-react";
+import { toast } from "sonner";
 import type { Conversation } from "@/types";
 import { EmptyState, Button, Skeleton } from "@/components/ui";
 import { ConversationItem } from "@/components/chat";
+import { conversationsApi } from "@/lib/api/client";
 
 // Helper functions for localStorage persistence
 const CONVERSATIONS_STORAGE_KEY = "atlas-conversations";
@@ -37,20 +39,7 @@ export default function ChatIndexPage() {
   }, []);
 
   const handleNew = async () => {
-    // Create a new conversation ID
-    const newId = `conv-${Date.now()}`;
-    const newConversation: Conversation = {
-      id: newId,
-      title: "New conversation",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      userId: "user-1", // This should come from auth context
-    };
-    
-    const updated = [...conversations, newConversation];
-    setConversations(updated);
-    saveConversations(updated);
-    router.push(`/chat/${newId}`);
+    router.push(`/chat/new`);
   };
 
   const handleDelete = async (id: string) => {

@@ -6,6 +6,7 @@ import type {
   Message,
   SendMessageRequest,
   SendMessageResponse,
+  NewChatResponse,
   Document,
   DocumentUploadResponse,
   SearchRequest,
@@ -120,7 +121,7 @@ export const conversationsApi = {
   sendMessage: (conversationId: string, data: SendMessageRequest) =>
     api.post<SendMessageResponse>(`/chat/${conversationId}`, { conversationId, query: data.content }),
   newChat: (data: SendMessageRequest) =>
-    api.post<SendMessageResponse>("/chat/new", { query: data.content }),
+    api.post<NewChatResponse>("/chat/new", { query: data.content }),
   // Simulated GET endpoints using localStorage
   get: (id: string): Promise<Conversation | null> => {
     const stored = localStorage.getItem("atlas-conversations");

@@ -134,8 +134,13 @@ export default function ConversationPage() {
     // Create new conversation via API
     try {
       const response = await conversationsApi.newChat({ content: "New conversation" });
+      // Response shape: { success: boolean; data: { conversationId: string; message: string; sources: ... } }
+      const conversationId = response.data?.conversationId;
+      if (!conversationId) {
+        throw new Error("No conversation ID returned from backend");
+      }
       const newConversation: Conversation = {
-        id: response.conversationId,
+        id: conversationId,
         title: "New conversation",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -149,7 +154,7 @@ export default function ConversationPage() {
       localStorage.setItem("atlas-conversations", JSON.stringify(updated));
       setConversations(updated);
 
-      router.push(`/chat/${response.conversationId}`);
+      router.push(`/chat/${conversationId}`);
     } catch (error) {
       console.error("Failed to create new conversation:", error);
     }

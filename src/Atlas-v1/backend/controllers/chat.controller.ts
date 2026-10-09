@@ -73,7 +73,7 @@ export const chatController = async (req: Request, res: Response) => {
       data: {
         conversationId,
         message: response.content,
-        sources
+        sources,
       },
     });
   } catch (error) {
@@ -86,19 +86,18 @@ export const chatController = async (req: Request, res: Response) => {
 
 export const newChatController = async (req: Request, res: Response) => {
   const { query } = req.body;
-
-  const session = await auth.api.getSession({
-    headers: new Headers(req.headers as Record<string, string>),
-  });
-
-  if (!session?.user) {
-    return res.status(401).json({
-      success: false,
-      message: "Unauthorized",
-    });
-  }
-
+  console.log("New Chat Request Received : ", query);
   try {
+    const session = await auth.api.getSession({
+      headers: new Headers(req.headers as Record<string, string>),
+    });
+
+    if (!session?.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
     if (typeof query !== "string" || !query.trim()) {
       return res.status(400).json({
         success: false,
@@ -179,8 +178,7 @@ export const newChatController = async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error("Error creating chat:", error);
-
+    console.log("Error creating chat:", error);
     return res.status(500).json({
       success: false,
       message: "Error while processing your request.",
