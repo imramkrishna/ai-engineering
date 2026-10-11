@@ -123,8 +123,8 @@ body {
   background: var(--bg-base);
   color: var(--text-primary);
   font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 1.5;
+  font-size: 15px;
+  line-height: 1.6;
   font-feature-settings: "cv01" 1, "cv02" 1, "ss01" 1;
 }
 
@@ -222,7 +222,7 @@ pre code { background: none; border: none; padding: 0; }
   gap: 9px;
   padding: 7px 10px;
   border-radius: var(--radius-md);
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 450;
   color: var(--text-secondary);
   cursor: pointer;
@@ -270,7 +270,7 @@ pre code { background: none; border: none; padding: 0; }
   gap: 6px;
   border-radius: var(--radius-md);
   font-family: var(--font-sans);
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: background var(--transition-fast), box-shadow var(--transition-fast),
@@ -353,7 +353,7 @@ pre code { background: none; border: none; padding: 0; }
   border-radius: var(--radius-md);
   color: var(--text-primary);
   font-family: var(--font-sans);
-  font-size: 13.5px;
+  font-size: 14px;
   padding: 9px 13px;
   width: 100%;
   outline: none;

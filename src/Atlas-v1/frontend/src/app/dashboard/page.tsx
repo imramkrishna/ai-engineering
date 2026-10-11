@@ -13,12 +13,13 @@ import {
   Clock,
   HardDrive,
   Sparkles,
+  Layers,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
-import { mockConversationsApi, mockDocumentsApi, mockAccountApi } from "@/lib/mock";
+import { conversationsApi, documentsApi, accountApi } from "@/lib/api/client";
 import type { Conversation, Document, UsageStats } from "@/types";
 import { Skeleton, Button } from "@/components/ui";
-import { formatRelativeDate, formatBytes, truncate } from "@/lib/utils";
+import { formatRelativeDate, formatBytes, truncate, getFileExtension } from "@/lib/utils";
 import { StatusBadge as DocStatusBadge } from "@/components/documents";
 
 export default function DashboardPage() {
@@ -33,13 +34,20 @@ export default function DashboardPage() {
     const load = async () => {
       try {
         const [convs, docs, usage] = await Promise.all([
-          mockConversationsApi.list(),
-          mockDocumentsApi.list(),
-          mockAccountApi.getUsage(),
+          conversationsApi.list().catch(() => []),
+          documentsApi.getAll().catch(() => []),
+          accountApi.getUsage().catch(() => null),
         ]);
         setConversations(convs.slice(0, 4));
-        setDocuments(docs.data.slice(0, 4));
-        setStats(usage);
+        setDocuments(docs.slice(0, 4));
+        setStats(
+          usage ?? {
+            documentCount: docs.length,
+            conversationCount: convs.length,
+            messageCount: 0,
+            storageBytes: docs.reduce((acc, d) => acc + (d.fileSizeBytes || 0), 0),
+          }
+        );
       } finally {
         setIsLoading(false);
       }
@@ -47,9 +55,8 @@ export default function DashboardPage() {
     load();
   }, []);
 
-  const handleNewChat = async () => {
-    const conv = await mockConversationsApi.create();
-    router.push(`/chat/${conv.id}`);
+  const handleNewChat = () => {
+    router.push("/chat/new");
   };
 
   const [greeting, setGreeting] = useState("Welcome back");
@@ -61,11 +68,18 @@ export default function DashboardPage() {
 
   const firstName = user?.name.split(" ")[0] ?? "";
 
+  const totalChunks = documents.reduce((acc, d) => acc + (d.chunkCount || 0), 0);
+
   const statItems = stats
     ? [
         { label: "Documents", value: stats.documentCount, icon: FileText, color: "var(--accent-primary)" },
         { label: "Conversations", value: stats.conversationCount, icon: MessageSquare, color: "#818cf8" },
-        { label: "Messages", value: stats.messageCount ?? 0, icon: TrendingUp, color: "#34d399" },
+        {
+          label: stats.messageCount ? "Messages" : "Indexed Chunks",
+          value: stats.messageCount ? stats.messageCount : totalChunks,
+          icon: stats.messageCount ? TrendingUp : Layers,
+          color: "#34d399",
+        },
         { label: "Storage", value: formatBytes(stats.storageBytes ?? 0), icon: HardDrive, color: "#fb923c" },
       ]
     : [];
@@ -350,14 +364,14 @@ export default function DashboardPage() {
                   className="atlas-card p-3.5 flex items-center gap-3 hoverable"
                 >
                   <div
-                    className="w-9 h-9 rounded-lg flex items-center justify-center text-[10px] font-bold flex-shrink-0 uppercase tracking-wide"
+                    className="w-9 h-9 rounded-lg flex items-center justify-center text-[11px] font-bold flex-shrink-0 uppercase tracking-wide overflow-hidden"
                     style={{
                       background: "var(--accent-primary-muted)",
                       color: "var(--accent-primary)",
-                      letterSpacing: "0.03em",
+                      letterSpacing: "0.02em",
                     }}
                   >
-                    {doc.fileType}
+                    {getFileExtension(doc.filename || doc.fileType)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p

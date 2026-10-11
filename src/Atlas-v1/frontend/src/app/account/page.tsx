@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { User, Mail, Calendar, FileText, MessageSquare, ArrowRight, HardDrive } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
-import { mockAccountApi } from "@/lib/mock";
+import { accountApi, documentsApi, conversationsApi } from "@/lib/api/client";
 import type { UsageStats } from "@/types";
 import { PageHeader, Avatar, Button, Skeleton, Card } from "@/components/ui";
 import { formatDate, formatBytes } from "@/lib/utils";
@@ -15,7 +15,30 @@ export default function AccountPage() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    mockAccountApi.getUsage().then((s) => { setStats(s); setIsLoading(false); });
+    const loadUsage = async () => {
+      try {
+        const usage = await accountApi.getUsage().catch(() => null);
+        if (usage) {
+          setStats(usage);
+        } else {
+          const [docs, convs] = await Promise.all([
+            documentsApi.getAll().catch(() => []),
+            conversationsApi.list().catch(() => []),
+          ]);
+          setStats({
+            documentCount: docs.length,
+            conversationCount: convs.length,
+            messageCount: 0,
+            storageBytes: docs.reduce((acc, d) => acc + (d.fileSizeBytes || 0), 0),
+          });
+        }
+      } catch {
+        setStats(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadUsage();
   }, []);
 
   const statItems = stats ? [

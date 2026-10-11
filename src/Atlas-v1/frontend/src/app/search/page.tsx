@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, FileText, ExternalLink, Zap } from "lucide-react";
-import { mockSearchApi } from "@/lib/mock";
+import { searchApi } from "@/lib/api/client";
 import type { SearchResult } from "@/types";
 import { PageHeader, Button, EmptyState, ErrorState, Skeleton, Card } from "@/components/ui";
 import { formatScore } from "@/lib/utils";
@@ -25,7 +25,7 @@ export default function SearchPage() {
     setIsError(false);
     setResults(null);
     try {
-      const res = await mockSearchApi.search(q);
+      const res = await searchApi.search({ query: q });
       setResults(res.results);
       setLatency(res.latencyMs ?? null);
       setLastQuery(res.query);

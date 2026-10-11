@@ -29,18 +29,19 @@ interface Scenario {
 
 const SCENARIOS: Scenario[] = [
   {
-    id: "legal",
-    category: "Contract Intelligence",
-    userPrompt: "Summarize Section 8.4 non-compete clauses & liability caps in the 2024 Partner Agreement.",
-    linkedDocs: "Partner_Agreement_v4.pdf",
-    steps: ["Scanning 142 document pages", "Locating Section 8.4 jurisdiction terms", "Grounding citations"],
+    id: "ddd",
+    category: "Architecture & Design",
+    userPrompt: "what is domain driven design book about explain me in short",
+    linkedDocs: "Domain_Driven_Design_Evans.pdf",
+    steps: ["Scanning software architecture books", "Locating core domain & ubiquitous language", "Grounding citations [Source 1..4]"],
     response:
-      "Section 8.4 restricts non-compete obligations to 12 months within APAC jurisdictions. Total liability is capped at 12 months of trailing service fees, explicitly excluding confidentiality breaches.",
+      "• Focus on the domain: Software architecture centers on core business domain logic [Source 1]. • Collaborative language: Teams use ubiquitous language to connect developers and domain experts [Source 2]. • Technical isolation: The model is cleanly isolated within a dedicated domain layer [Source 3].",
     citations: [
-      { name: "Partner_Agreement_v4.pdf", page: "p. 28" },
-      { name: "Legal_Risk_Review.docx", page: "p. 14" },
+      { name: "Domain_Driven_Design.pdf", page: "Source 1" },
+      { name: "Ubiquitous_Language_Spec.md", page: "Source 2" },
+      { name: "Enterprise_Patterns.docx", page: "Source 3" },
     ],
-    tag: "99.8% Grounded",
+    tag: "Verified Citations",
   },
   {
     id: "finance",
@@ -251,7 +252,7 @@ export function AuthChatShowcase() {
                   : "text-[var(--text-muted)] hover:text-[var(--text-secondary)]"
               }`}
             >
-              {idx === 0 ? "Legal" : idx === 1 ? "Finance" : "Security"}
+              {idx === 0 ? "Architecture" : idx === 1 ? "Finance" : "Security"}
             </button>
           ))}
         </div>
@@ -283,8 +284,8 @@ export function AuthChatShowcase() {
           {/* Agent Status or Response Bubble */}
           {(phase === "thinking" || phase === "streaming" || phase === "completed") && (
             <div className="flex items-start gap-2.5 transition-all duration-300">
-              <div className="w-6 h-6 rounded-full bg-[rgba(255,255,255,0.08)] border border-[rgba(255,255,255,0.15)] flex items-center justify-center text-[var(--accent-primary)] flex-shrink-0 mt-0.5 shadow-sm">
-                <Sparkles size={11} />
+              <div className="w-6 h-6 rounded-full bg-[rgba(255,255,255,0.08)] border border-[rgba(255,255,255,0.15)] flex items-center justify-center p-1 flex-shrink-0 mt-0.5 shadow-sm overflow-hidden">
+                <img src="/logo.png" alt="Atlas" className="w-3.5 h-3.5 object-contain" />
               </div>
 
               <div className="flex-1 max-w-[92%] rounded-2xl rounded-tl-xs bg-[rgba(18,20,24,0.85)] backdrop-blur-xl border border-[rgba(255,255,255,0.08)] p-3.5 shadow-xl flex flex-col gap-2.5">

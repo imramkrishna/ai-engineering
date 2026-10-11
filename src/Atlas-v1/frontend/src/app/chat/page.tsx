@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, MessageSquare, Search } from "lucide-react";
+import { Plus, MessageSquare, Search, Check, X as XIcon } from "lucide-react";
 import { toast } from "sonner";
 import type { Conversation } from "@/types";
 import { EmptyState, Button, Skeleton, Input } from "@/components/ui";
@@ -15,6 +15,17 @@ export default function ChatIndexPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
+
+  // Inline rename state
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const renameInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (renamingId) {
+      setTimeout(() => renameInputRef.current?.focus(), 50);
+    }
+  }, [renamingId]);
 
   useEffect(() => {
     const loadConversations = async () => {
@@ -44,18 +55,31 @@ export default function ChatIndexPage() {
     }
   };
 
-  const handleRename = async (id: string) => {
-    const title = prompt("Rename conversation:");
-    if (!title?.trim()) return;
-    try {
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === id ? { ...c, title: title.trim(), updatedAt: new Date().toISOString() } : c
-        )
-      );
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to rename");
+  const startRename = (id: string) => {
+    const current = conversations.find((c) => c.id === id);
+    setRenameValue(current?.title ?? "");
+    setRenamingId(id);
+  };
+
+  const commitRename = async () => {
+    if (!renamingId) return;
+    const title = renameValue.trim();
+    if (!title) {
+      setRenamingId(null);
+      return;
     }
+
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === renamingId ? { ...c, title, updatedAt: new Date().toISOString() } : c
+      )
+    );
+    setRenamingId(null);
+  };
+
+  const cancelRename = () => {
+    setRenamingId(null);
+    setRenameValue("");
   };
 
   const filtered = conversations.filter(
@@ -129,16 +153,52 @@ export default function ChatIndexPage() {
               {search ? `No results for "${search}"` : "No conversations yet"}
             </p>
           ) : (
-            filtered.map((conv) => (
-              <ConversationItem
-                key={conv.id}
-                conversation={conv}
-                isActive={false}
-                onSelect={() => router.push(`/chat/${conv.id}`)}
-                onDelete={() => handleDelete(conv.id)}
-                onRename={() => handleRename(conv.id)}
-              />
-            ))
+            filtered.map((conv) =>
+              renamingId === conv.id ? (
+                <div
+                  key={conv.id}
+                  className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg"
+                  style={{ background: "var(--bg-active)" }}
+                >
+                  <input
+                    ref={renameInputRef}
+                    value={renameValue}
+                    onChange={(e) => setRenameValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") commitRename();
+                      if (e.key === "Escape") cancelRename();
+                    }}
+                    className="flex-1 min-w-0 bg-transparent outline-none text-[13px]"
+                    style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}
+                  />
+                  <button
+                    onClick={commitRename}
+                    className="p-0.5 rounded transition-colors"
+                    style={{ color: "var(--accent-primary)" }}
+                    aria-label="Confirm rename"
+                  >
+                    <Check size={13} strokeWidth={2.5} />
+                  </button>
+                  <button
+                    onClick={cancelRename}
+                    className="p-0.5 rounded transition-colors"
+                    style={{ color: "var(--text-muted)" }}
+                    aria-label="Cancel rename"
+                  >
+                    <XIcon size={13} />
+                  </button>
+                </div>
+              ) : (
+                <ConversationItem
+                  key={conv.id}
+                  conversation={conv}
+                  isActive={false}
+                  onSelect={() => router.push(`/chat/${conv.id}`)}
+                  onDelete={() => handleDelete(conv.id)}
+                  onRename={() => startRename(conv.id)}
+                />
+              )
+            )
           )}
         </div>
 

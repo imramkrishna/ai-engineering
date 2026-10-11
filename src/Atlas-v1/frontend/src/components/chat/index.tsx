@@ -76,7 +76,7 @@ function RenderContent({
   if (!citations?.length) {
     return (
       <div
-        className="prose text-[13.5px] leading-[1.7]"
+        className="prose text-[15px] leading-[1.75]"
         style={{ color: "var(--text-primary)" }}
         dangerouslySetInnerHTML={{ __html: simpleMarkdown(content) }}
       />
@@ -86,7 +86,7 @@ function RenderContent({
   const parts = content.split(/(\[\d+\])/g);
   return (
     <div
-      className="prose text-[13.5px] leading-[1.7]"
+      className="prose text-[15px] leading-[1.75]"
       style={{ color: "var(--text-primary)" }}
     >
       {parts.map((part, i) => {
@@ -224,18 +224,18 @@ export function CitationList({ citations }: { citations: Citation[] }) {
             </span>
             <div className="flex-1 min-w-0">
               <p
-                className="text-[12.5px] font-medium"
+                className="text-[14px] font-medium"
                 style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}
               >
                 {c.title}
               </p>
               {c.page && (
-                <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                <p className="text-[12.5px] mt-0.5" style={{ color: "var(--text-muted)" }}>
                   Page {c.page}
                 </p>
               )}
               <p
-                className="text-xs mt-1.5 line-clamp-2 leading-relaxed"
+                className="text-[13px] mt-1.5 line-clamp-2 leading-relaxed"
                 style={{ color: "var(--text-secondary)", fontStyle: "italic" }}
               >
                 &ldquo;{c.quote}&rdquo;
@@ -304,37 +304,31 @@ export function ChatMessage({
   const debug = message.ragAnswer?.debugInfo;
 
   return (
-    <div className={cn("flex gap-3 group animate-fade-in px-4 py-1", isUser && "flex-row-reverse")}>
-      {/* Avatar */}
-      <div
-        className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold flex-shrink-0 mt-1"
-        style={
-          isUser
-            ? {
-                background: "var(--bg-elevated)",
-                border: "1px solid var(--border-default)",
-                color: "var(--text-secondary)",
-              }
-            : {
-                background: "var(--accent-primary)",
-                color: "#021a19",
-                boxShadow: "0 0 10px var(--accent-primary-glow)",
-              }
-        }
-      >
-        {isUser ? "U" : "A"}
-      </div>
+    <div className={cn("flex gap-3 group animate-fade-in px-4 py-1", isUser ? "justify-end" : "justify-start")}>
+      {/* Assistant Avatar only */}
+      {!isUser && (
+        <div
+          className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold flex-shrink-0 mt-1 overflow-hidden"
+          style={{
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--border-default)",
+            boxShadow: "0 0 10px rgba(32, 178, 170, 0.15)",
+          }}
+        >
+          <img src="/logo.png" alt="Atlas" className="w-4 h-4 object-contain" />
+        </div>
+      )}
 
       {/* Content */}
       <div className={cn("flex flex-col gap-1.5 max-w-2xl min-w-0", isUser && "items-end")}>
         {isUser ? (
           <div
-            className="px-4 py-3 rounded-2xl text-[13.5px] leading-relaxed"
+            className="px-4 py-3 rounded-xl text-[15px] leading-relaxed max-w-xl"
             style={{
               background: "var(--bg-elevated)",
               border: "1px solid var(--border-default)",
               color: "var(--text-primary)",
-              borderBottomRightRadius: 6,
+              borderBottomRightRadius: 4,
             }}
           >
             {message.content}
@@ -342,8 +336,22 @@ export function ChatMessage({
         ) : (
           <div>
             {message.isStreaming ? (
-              <div className="py-2">
-                <TypingIndicator />
+              <div className="py-1">
+                {message.content ? (
+                  <div>
+                    <RenderContent
+                      content={message.content}
+                      citations={citations}
+                      onCitationClick={setActiveCitation}
+                    />
+                    <span className="inline-block w-1.5 h-3.5 ml-1 bg-[var(--accent-primary)] animate-pulse align-middle" />
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2.5 py-1">
+                    <TypingIndicator />
+                    <span className="text-[13px] text-[var(--text-muted)] animate-pulse">Atlas is thinking…</span>
+                  </div>
+                )}
               </div>
             ) : (
               <div>
@@ -415,6 +423,7 @@ export function ChatInput({
   disabled,
 }: ChatInputProps) {
   const [value, setValue] = useState("");
+  const [isFocused, setIsFocused] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const adjustHeight = () => {
@@ -443,72 +452,79 @@ export function ChatInput({
 
   return (
     <div
-      className="px-4 py-3 flex-shrink-0"
+      className="px-4 pt-1.5 pb-2.5 flex-shrink-0"
       style={{ borderTop: "1px solid var(--border-subtle)", background: "var(--bg-base)" }}
     >
-      <div
-        className="flex items-end gap-2 rounded-2xl px-4 py-3 transition-all duration-150"
-        style={{
-          background: "var(--bg-elevated)",
-          border: `1px solid ${hasValue ? "var(--border-focus)" : "var(--border-default)"}`,
-          boxShadow: hasValue ? "0 0 0 3px rgba(32,178,170,0.06)" : "none",
-        }}
-      >
-        <textarea
-          ref={textareaRef}
-          value={value}
-          onChange={(e) => {
-            setValue(e.target.value);
-            adjustHeight();
-          }}
-          onKeyDown={handleKey}
-          placeholder={placeholder}
-          disabled={disabled || isLoading}
-          rows={1}
-          className="flex-1 resize-none bg-transparent outline-none leading-relaxed"
+      <div className="max-w-3xl mx-auto w-full">
+        <div
+          className="flex items-end gap-2.5 rounded-xl px-3.5 py-2.5 transition-all duration-150"
           style={{
-            color: "var(--text-primary)",
-            fontSize: "13.5px",
-            minHeight: "22px",
-            maxHeight: "200px",
-            fontFamily: "var(--font-sans)",
-            letterSpacing: "-0.01em",
+            background: "var(--bg-elevated)",
+            border: `1px solid ${isFocused ? "var(--border-focus)" : "var(--border-default)"}`,
+            boxShadow: isFocused ? "0 0 0 3px rgba(32, 178, 170, 0.08)" : "none",
           }}
-          aria-label="Chat input"
-        />
-        <button
-          onClick={submit}
-          disabled={!hasValue || isLoading || disabled}
-          className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-150"
-          style={{
-            background: hasValue && !isLoading ? "var(--accent-primary)" : "var(--bg-hover)",
-            color: hasValue && !isLoading ? "#021a19" : "var(--text-muted)",
-            transform: hasValue && !isLoading ? "scale(1)" : "scale(0.92)",
-          }}
-          aria-label="Send message"
         >
-          {isLoading ? <Spinner size={13} /> : <Send size={13} strokeWidth={2.5} />}
-        </button>
+          <textarea
+            ref={textareaRef}
+            value={value}
+            onChange={(e) => {
+              setValue(e.target.value);
+              adjustHeight();
+            }}
+            onKeyDown={handleKey}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            placeholder={placeholder}
+            disabled={disabled || isLoading}
+            rows={1}
+            className="flex-1 resize-none bg-transparent leading-relaxed p-0 border-none outline-none ring-0 shadow-none focus:outline-none focus:ring-0 focus:border-none focus:shadow-none placeholder:text-[var(--text-muted)]"
+            style={{
+              color: "var(--text-primary)",
+              fontSize: "15px",
+              minHeight: "24px",
+              maxHeight: "200px",
+              fontFamily: "var(--font-sans)",
+              letterSpacing: "-0.01em",
+              border: "none",
+              outline: "none",
+              boxShadow: "none",
+            }}
+            aria-label="Chat input"
+          />
+          <button
+            onClick={submit}
+            disabled={!hasValue || isLoading || disabled}
+            className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-150"
+            style={{
+              background: hasValue && !isLoading ? "var(--accent-primary)" : "var(--bg-hover)",
+              color: hasValue && !isLoading ? "#021a19" : "var(--text-muted)",
+              transform: hasValue && !isLoading ? "scale(1)" : "scale(0.94)",
+            }}
+            aria-label="Send message"
+          >
+            {isLoading ? <Spinner size={12} /> : <Send size={12} strokeWidth={2.5} />}
+          </button>
+        </div>
+        <p
+          className="text-[11px] mt-1.5 text-center select-none"
+          style={{ color: "var(--text-muted)", letterSpacing: "-0.01em" }}
+        >
+          <kbd
+            className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono"
+            style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-default)" }}
+          >
+            ↵ Enter
+          </kbd>
+          {" "}to send ·{" "}
+          <kbd
+            className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono"
+            style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-default)" }}
+          >
+            ⇧ Shift+↵
+          </kbd>
+          {" "}for new line
+        </p>
       </div>
-      <p
-        className="text-[11.5px] mt-2 text-center select-none"
-        style={{ color: "var(--text-muted)", letterSpacing: "-0.01em" }}
-      >
-        <kbd
-          className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono"
-          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-default)" }}
-        >
-          ↵ Enter
-        </kbd>
-        {" "}to send ·{" "}
-        <kbd
-          className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono"
-          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-default)" }}
-        >
-          ⇧ Shift+↵
-        </kbd>
-        {" "}for new line
-      </p>
     </div>
   );
 }

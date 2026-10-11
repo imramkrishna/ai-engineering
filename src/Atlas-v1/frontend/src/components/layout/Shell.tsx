@@ -146,11 +146,10 @@ export function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile
               <Link
                 href="/chat/new"
                 onClick={onCloseMobile}
-                className="atlas-btn atlas-btn-primary w-full aspect-square p-0 !rounded-lg"
-                style={{ height: 32, width: 32 }}
+                className="w-8 h-8 rounded-lg border border-[var(--border-default)] bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] text-[var(--text-primary)] hover:border-[var(--border-strong)] flex items-center justify-center mx-auto transition-colors shadow-xs"
                 aria-label="New chat"
               >
-                <Plus size={15} strokeWidth={2.5} />
+                <Plus size={18} strokeWidth={2.5} className="text-[var(--text-primary)] flex-shrink-0" />
               </Link>
             </Tooltip>
           ) : (
@@ -160,7 +159,7 @@ export function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile
               className="atlas-btn atlas-btn-secondary w-full text-[12.5px] h-8"
               style={{ gap: 6 }}
             >
-              <Plus size={14} strokeWidth={2.5} />
+              <Plus size={15} strokeWidth={2.5} />
               New chat
             </Link>
           )}
@@ -227,13 +226,13 @@ export function Sidebar({ collapsed, onToggleCollapse, mobileOpen, onCloseMobile
                 <>
                   <div className="flex-1 min-w-0">
                     <p
-                      className="text-[12.5px] font-medium truncate leading-tight"
+                      className="text-[13.5px] font-medium truncate leading-tight"
                       style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}
                     >
                       {user.name}
                     </p>
                     <p
-                      className="text-[11px] truncate leading-tight mt-0.5"
+                      className="text-[12px] truncate leading-tight mt-0.5"
                       style={{ color: "var(--text-muted)" }}
                     >
                       {user.email}

@@ -67,7 +67,7 @@ export async function getMessages(conversationId: string) {
     .select()
     .from(messages)
     .where(eq(messages.conversationId, conversationId))
-    .orderBy(desc(messages.createdAt));
+    .orderBy(asc(messages.createdAt));
   return conversationMessages;
 }
 

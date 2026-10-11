@@ -18,7 +18,7 @@ import type {
   PaginatedResponse,
   DocumentStatus,
 } from "@/types";
-import { shortId } from "@/lib/utils";
+import { shortId, getFileExtension } from "@/lib/utils";
 
 // ─── API Client ───────────────────────────────────────────────
 
@@ -266,7 +266,7 @@ function toFrontendDocument(d: BackendDocument): Document {
     id: d.id,
     title: d.name,
     filename: d.name,
-    fileType: d.mimeType,
+    fileType: getFileExtension(d.name || d.mimeType),
     fileSizeBytes: d.size,
     status: d.status,
     chunkCount: d.chunkCount,
