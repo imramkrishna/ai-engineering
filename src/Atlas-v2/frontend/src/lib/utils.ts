@@ -60,9 +60,19 @@ export function debounce<T extends (...args: any[]) => any>(fn: T, ms: number): 
   };
 }
 
-/** Get file extension */
-export function getFileExtension(filename: string): string {
-  return filename.split(".").pop()?.toUpperCase() ?? "FILE";
+/** Get file extension or clean format label */
+export function getFileExtension(filenameOrMime: string): string {
+  if (!filenameOrMime) return "FILE";
+  if (filenameOrMime.includes("/")) {
+    if (filenameOrMime.includes("pdf")) return "PDF";
+    if (filenameOrMime.includes("word") || filenameOrMime.includes("document")) return "DOCX";
+    if (filenameOrMime.includes("text/plain")) return "TXT";
+    if (filenameOrMime.includes("markdown")) return "MD";
+    const sub = filenameOrMime.split("/")[1]?.replace(/^x-/, "");
+    return sub ? sub.toUpperCase().slice(0, 4) : "FILE";
+  }
+  const ext = filenameOrMime.split(".").pop();
+  return ext ? ext.toUpperCase().slice(0, 4) : "FILE";
 }
 
 /** Format similarity score to percentage */

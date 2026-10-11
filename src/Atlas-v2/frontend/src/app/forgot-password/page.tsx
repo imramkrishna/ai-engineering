@@ -32,28 +32,14 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="auth-page-root">
-      <div className="auth-bg">
-        <div className="auth-orb auth-orb-1" />
-        <div className="auth-orb auth-orb-2" />
-        <div className="auth-grid-overlay" />
-      </div>
-
       <div className={`auth-content ${mounted ? "auth-content-visible" : ""}`}>
         {/* Logo */}
-        <div className="auth-logo-group">
-          <div className="auth-logo-ring">
-            <div className="auth-logo-inner">
-              <img src="/logo.png" alt="Atlas" className="w-7 h-7 object-contain" />
-            </div>
+        <Link href="/" className="auth-brand-link">
+          <div className="auth-brand-mark">
+            <img src="/logo.png" alt="Atlas" className="w-5 h-5 object-contain" />
           </div>
-          <div className="auth-wordmark">
-            <span className="auth-wordmark-name">Atlas</span>
-            <span className="auth-wordmark-badge">
-              <Sparkles size={10} />
-              AI Workspace
-            </span>
-          </div>
-        </div>
+          <span className="auth-brand-name">Atlas</span>
+        </Link>
 
         {/* Card */}
         <div className="auth-card">
@@ -144,37 +130,6 @@ export default function ForgotPasswordPage() {
           overflow: hidden;
           background: var(--bg-base);
         }
-        .auth-bg { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
-        .auth-orb {
-          position: absolute;
-          border-radius: 50%;
-          filter: blur(80px);
-          opacity: 0.18;
-          animation: auth-orb-float 8s ease-in-out infinite;
-        }
-        .auth-orb-1 {
-          width: 500px; height: 500px;
-          background: radial-gradient(circle, #20b2aa 0%, transparent 70%);
-          top: -150px; left: -100px;
-        }
-        .auth-orb-2 {
-          width: 400px; height: 400px;
-          background: radial-gradient(circle, #3b82f6 0%, transparent 70%);
-          bottom: -100px; right: -80px;
-          animation-delay: -3s;
-        }
-        @keyframes auth-orb-float {
-          0%, 100% { transform: translateY(0) scale(1); }
-          50% { transform: translateY(-20px) scale(1.04); }
-        }
-        .auth-grid-overlay {
-          position: absolute;
-          inset: 0;
-          background-image:
-            linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
-          background-size: 40px 40px;
-        }
         .auth-content {
           position: relative;
           z-index: 1;
@@ -189,34 +144,41 @@ export default function ForgotPasswordPage() {
           transition: opacity 500ms ease, transform 500ms ease;
         }
         .auth-content-visible { opacity: 1; transform: translateY(0); }
-        .auth-logo-group { display: flex; flex-direction: column; align-items: center; gap: 12px; }
-        .auth-logo-ring {
-          width: 60px; height: 60px;
-          border-radius: 18px;
-          background: linear-gradient(135deg, rgba(32,178,170,0.2), rgba(59,130,246,0.1));
-          border: 1px solid rgba(32,178,170,0.3);
-          display: flex; align-items: center; justify-content: center;
-          box-shadow: 0 0 30px rgba(32,178,170,0.2), 0 0 60px rgba(32,178,170,0.05);
-          animation: auth-logo-pulse 3s ease-in-out infinite;
+        /* ── Brand Link / Logo ── */
+        .auth-brand-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          text-decoration: none;
+          color: var(--text-primary);
+          transition: opacity 150ms ease;
+          user-select: none;
         }
-        .auth-logo-inner {
-          width: 44px; height: 44px;
-          border-radius: 12px;
-          background: rgba(32,178,170,0.08);
-          display: flex; align-items: center; justify-content: center;
+        .auth-brand-link:hover {
+          opacity: 0.85;
         }
-        @keyframes auth-logo-pulse {
-          0%, 100% { box-shadow: 0 0 30px rgba(32,178,170,0.2), 0 0 60px rgba(32,178,170,0.05); }
-          50% { box-shadow: 0 0 40px rgba(32,178,170,0.35), 0 0 80px rgba(32,178,170,0.1); }
+
+        .auth-brand-mark {
+          width: 36px;
+          height: 36px;
+          border-radius: 10px;
+          background: var(--bg-elevated);
+          border: 1px solid var(--border-default);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+          transition: border-color 150ms ease;
         }
-        .auth-wordmark { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-        .auth-wordmark-name { font-size: 20px; font-weight: 700; letter-spacing: -0.5px; color: var(--text-primary); }
-        .auth-wordmark-badge {
-          display: inline-flex; align-items: center; gap: 4px;
-          font-size: 10px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
-          color: var(--accent-primary); background: var(--accent-primary-muted);
-          border: 1px solid var(--accent-primary-border);
-          padding: 2px 8px; border-radius: 999px;
+        .auth-brand-link:hover .auth-brand-mark {
+          border-color: var(--border-strong);
+        }
+
+        .auth-brand-name {
+          font-size: 19px;
+          font-weight: 600;
+          letter-spacing: -0.03em;
+          color: var(--text-primary);
         }
         .auth-card {
           width: 100%;

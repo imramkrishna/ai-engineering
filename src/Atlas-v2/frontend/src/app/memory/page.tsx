@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Brain, Trash2, Plus, Search, AlertTriangle } from "lucide-react";
-import { mockMemoryApi } from "@/lib/mock";
+import { memoryApi } from "@/lib/api/client";
 import type { MemoryItem, MemorySettings } from "@/types";
 import { PageHeader, Button, Input, EmptyState, ErrorState, Toggle, Skeleton, Card } from "@/components/ui";
 import { formatRelativeDate } from "@/lib/utils";
@@ -19,41 +19,64 @@ export default function MemoryPage() {
 
   useEffect(() => {
     const load = async () => {
-      const [memItems, memSettings] = await Promise.all([
-        mockMemoryApi.list(),
-        mockMemoryApi.getSettings(),
-      ]);
-      setItems(memItems);
-      setSettings(memSettings);
-      setIsLoading(false);
+      try {
+        const [memItems, memSettings] = await Promise.all([
+          memoryApi.list().catch(() => []),
+          memoryApi.getSettings().catch(() => ({ enabled: true, maxItems: 100 })),
+        ]);
+        setItems(memItems);
+        setSettings(memSettings);
+      } catch {
+        setItems([]);
+        setSettings({ enabled: true, maxItems: 100 });
+      } finally {
+        setIsLoading(false);
+      }
     };
     load();
   }, []);
 
   const handleToggleMemory = async (enabled: boolean) => {
-    const updated = await mockMemoryApi.updateSettings({ enabled });
-    setSettings(updated);
+    try {
+      const updated = await memoryApi.updateSettings({ enabled });
+      setSettings(updated);
+    } catch {
+      setSettings((prev) => (prev ? { ...prev, enabled } : null));
+    }
   };
 
   const handleAdd = async () => {
     if (!newContent.trim()) return;
     setIsAdding(true);
-    const item = await mockMemoryApi.create(newContent.trim());
-    setItems((prev) => [item, ...prev]);
-    setNewContent("");
-    setShowAdd(false);
-    setIsAdding(false);
+    try {
+      const item = await memoryApi.create(newContent.trim());
+      setItems((prev) => [item, ...prev]);
+      setNewContent("");
+      setShowAdd(false);
+    } catch (e) {
+      console.error("Failed to add memory item:", e);
+    } finally {
+      setIsAdding(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
-    await mockMemoryApi.delete(id);
-    setItems((prev) => prev.filter((m) => m.id !== id));
+    try {
+      await memoryApi.delete(id);
+      setItems((prev) => prev.filter((m) => m.id !== id));
+    } catch (e) {
+      console.error("Failed to delete memory item:", e);
+    }
   };
 
   const handleClear = async () => {
-    await mockMemoryApi.clear();
-    setItems([]);
-    setConfirmClear(false);
+    try {
+      await memoryApi.clear();
+      setItems([]);
+      setConfirmClear(false);
+    } catch (e) {
+      console.error("Failed to clear memory:", e);
+    }
   };
 
   const filtered = items.filter((m) =>

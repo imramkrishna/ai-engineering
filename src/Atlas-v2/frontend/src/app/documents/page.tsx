@@ -100,8 +100,14 @@ export default function DocumentsPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this document? This action cannot be undone.")) return;
-    await documentsApi.delete(id);
-    setDocuments((d) => d.filter((x) => x.id !== id));
+    try {
+      await documentsApi.delete(id);
+      setDocuments((d) => d.filter((x) => x.id !== id));
+      toast.success("Document deleted");
+    } catch (error) {
+      console.error("Failed to delete document:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to delete document");
+    }
   };
 
   const handleRetry = async (id: string) => {

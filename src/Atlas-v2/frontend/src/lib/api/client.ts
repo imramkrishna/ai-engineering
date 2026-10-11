@@ -18,6 +18,7 @@ import type {
   PaginatedResponse,
   DocumentStatus,
 } from "@/types";
+import { shortId, getFileExtension } from "@/lib/utils";
 
 // ─── API Client ───────────────────────────────────────────────
 
@@ -118,13 +119,46 @@ export const authApi = {
 // Message listing is persisted client-side (localStorage) since the backend
 // does not expose a get-messages endpoint. We simulate those GET endpoints.
 export const conversationsApi = {
-  sendMessage: (conversationId: string, data: SendMessageRequest) =>
-    api.post<SendMessageResponse>(`/chat/conversation/${conversationId}`, { conversationId, query: data.content }),
+  sendMessage: async (conversationId: string, data: SendMessageRequest): Promise<SendMessageResponse> => {
+    const response = await api.post<BackendChatResponse>(
+      `/chat/conversation/${conversationId}`,
+      { conversationId, query: data.content },
+    );
+    if (!response.success || !response.data?.message) {
+      throw new Error(response.message || "Failed to send message");
+    }
+    return {
+      conversationId: response.data.conversationId,
+      message: {
+        id: shortId(),
+        conversationId: response.data.conversationId,
+        role: "assistant",
+        content: response.data.message,
+        createdAt: new Date().toISOString(),
+      },
+    };
+  },
   newChat: (data: SendMessageRequest) =>
     api.post<NewChatResponse>("/chat/new", { query: data.content }),
-  list: (): Promise<Conversation[]> =>
-    api.get<Conversation[]>("/chat/list"),
-  // Simulated GET endpoints using localStorage
+  list: async (): Promise<Conversation[]> => {
+    const response = await api.get<ConversationListResponse>("/chat/list");
+    if (!response.success) {
+      throw new Error(response.message || "Failed to fetch conversations");
+    }
+    if (!Array.isArray(response.conversations)) {
+      throw new Error("Invalid conversations response");
+    }
+    return response.conversations;
+  },
+  delete: async (conversationId: string): Promise<void> => {
+    const response = await api.delete<{ success: boolean; message?: string }>(
+      `/chat/conversation/${conversationId}`,
+    );
+    if (!response.success) {
+      throw new Error(response.message || "Failed to delete conversation");
+    }
+  },
+  // Conversation details are still read from localStorage until a detail endpoint exists.
   get: (id: string): Promise<Conversation | null> => {
     const stored = localStorage.getItem("atlas-conversations");
     if (!stored) return Promise.resolve(null);
@@ -132,11 +166,47 @@ export const conversationsApi = {
     const conversation = conversations.find(c => c.id === id);
     return Promise.resolve(conversation ?? null);
   },
-  getMessages: (conversationId: string): Promise<Message[]> =>
-    api.get<{ success: boolean; messages?: Message[]; message?: string }>(`/chat/conversation/${conversationId}`).then(
-      (res) => res.messages ?? [],
-    ),
+  getMessages: async (conversationId: string): Promise<Message[]> => {
+    const response = await api.get<{
+      success: boolean;
+      messages?: Message[];
+      message?: string;
+    }>(`/chat/conversation/${conversationId}`);
+    if (!response.success) {
+      throw new Error(response.message || "Failed to fetch messages");
+    }
+    if (!Array.isArray(response.messages)) {
+      throw new Error("Invalid messages response");
+    }
+    return response.messages.filter(isMessage);
+  },
 };
+
+interface BackendChatResponse {
+  success: boolean;
+  data?: {
+    conversationId: string;
+    message: string;
+  };
+  message?: string;
+}
+
+interface ConversationListResponse {
+  success: boolean;
+  conversations?: Conversation[];
+  message?: string;
+}
+
+function isMessage(value: Message | undefined): value is Message {
+  return Boolean(
+    value &&
+      typeof value.id === "string" &&
+      typeof value.conversationId === "string" &&
+      (value.role === "user" || value.role === "assistant" || value.role === "system") &&
+      typeof value.content === "string" &&
+      typeof value.createdAt === "string",
+  );
+}
 
 // ─── Documents ────────────────────────────────────────────────
 // The backend exposes: POST /api/v1/upload/new-document, GET /api/v1/upload/documents
@@ -154,15 +224,15 @@ export const documentsApi = {
     }
     return (res.documents ?? []).map(toFrontendDocument);
   },
-  // Simulated DELETE/Retry via localStorage (backend has no list/delete/retry endpoints)
-  delete: async (id: string) => {
-    const stored = localStorage.getItem("atlas-documents");
-    if (stored) {
-      const docs: Document[] = JSON.parse(stored);
-      localStorage.setItem("atlas-documents", JSON.stringify(docs.filter(d => d.id !== id)));
+  delete: async (id: string): Promise<void> => {
+    const response = await api.delete<{ success: boolean; message?: string }>(
+      `/upload/document/${id}`,
+    );
+    if (!response.success) {
+      throw new Error(response.message || "Failed to delete document");
     }
-    return Promise.resolve();
   },
+  // Retry remains client-side until its backend endpoint exists.
   retry: async (id: string) => {
     const stored = localStorage.getItem("atlas-documents");
     if (stored) {
@@ -196,7 +266,7 @@ function toFrontendDocument(d: BackendDocument): Document {
     id: d.id,
     title: d.name,
     filename: d.name,
-    fileType: d.mimeType,
+    fileType: getFileExtension(d.name || d.mimeType),
     fileSizeBytes: d.size,
     status: d.status,
     chunkCount: d.chunkCount,

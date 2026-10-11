@@ -2,10 +2,12 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { Plus, ArrowLeft } from "lucide-react";
+import { Plus, ArrowLeft, Check, X as XIcon } from "lucide-react";
+import { toast } from "sonner";
 import { conversationsApi } from "@/lib/api/client";
 import type { Conversation, Message } from "@/types";
 import { shortId } from "@/lib/utils";
+import { useAuth } from "@/lib/auth/context";
 import { EmptyState, Skeleton } from "@/components/ui";
 import { ChatMessage, ChatInput, ScrollToBottom, ConversationItem } from "@/components/chat";
 import Link from "next/link";
@@ -13,6 +15,7 @@ import Link from "next/link";
 export default function ConversationPage() {
   const params = useParams();
   const router = useRouter();
+  const { user } = useAuth();
   const conversationId = params.conversationId as string;
 
   const [conversation, setConversation] = useState<Conversation | null>(null);
@@ -22,6 +25,11 @@ export default function ConversationPage() {
   const [isSending, setIsSending] = useState(false);
   const [showScrollBtn, setShowScrollBtn] = useState(false);
 
+  // Inline rename state
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const renameInputRef = useRef<HTMLInputElement>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -29,7 +37,7 @@ export default function ConversationPage() {
     const load = async () => {
       setIsLoading(true);
       try {
-        // Load conversation details (from localStorage until a GET endpoint exists)
+        // Load conversation details (falls back to API list match)
         const conv = await conversationsApi.get(conversationId);
         setConversation(conv);
 
@@ -40,6 +48,12 @@ export default function ConversationPage() {
         // For sidebar, load all conversations from the real API list endpoint
         const convs = await conversationsApi.list();
         setConversations(convs);
+
+        // If get() returned null, try to find title from list
+        if (!conv) {
+          const found = convs.find((c) => c.id === conversationId) ?? null;
+          setConversation(found);
+        }
       } catch (error) {
         console.error("Failed to load conversation:", error);
         setConversation(null);
@@ -51,6 +65,13 @@ export default function ConversationPage() {
     };
     load();
   }, [conversationId]);
+
+  // Focus rename input when it opens
+  useEffect(() => {
+    if (renamingId) {
+      setTimeout(() => renameInputRef.current?.focus(), 50);
+    }
+  }, [renamingId]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -91,123 +112,206 @@ export default function ConversationPage() {
 
     try {
       const response = await conversationsApi.sendMessage(conversationId, { content });
-      setMessages((m) => {
-        const without = m.filter((x) => !x.isStreaming);
-        return [...without, response.message];
-      });
+      const fullMessage = response.message;
+      const fullText = fullMessage.content || "";
 
-      // Store messages in localStorage for persistence
-      const updatedMessages = [...messages, optimisticUser, response.message];
-      localStorage.setItem(`atlas-messages-${conversationId}`, JSON.stringify(updatedMessages));
+      // Stream the response words smoothly with live typing effect
+      const words = fullText.split(" ");
+      if (words.length <= 4) {
+        setMessages((m) => {
+          const without = m.filter((x) => x.id !== streamPlaceholder.id);
+          return [...without, fullMessage];
+        });
+      } else {
+        let currentWordCount = 1;
+        const totalWords = words.length;
+        const stepTime = Math.max(16, Math.min(40, Math.floor(1600 / totalWords)));
 
-      // Update conversation title if it's the first message
+        await new Promise<void>((resolve) => {
+          const interval = setInterval(() => {
+            currentWordCount += Math.max(1, Math.floor(totalWords / 45));
+            if (currentWordCount >= totalWords) {
+              clearInterval(interval);
+              setMessages((m) => {
+                const without = m.filter((x) => x.id !== streamPlaceholder.id);
+                return [...without, fullMessage];
+              });
+              resolve();
+            } else {
+              const partialContent = words.slice(0, currentWordCount).join(" ");
+              setMessages((m) =>
+                m.map((msg) =>
+                  msg.id === streamPlaceholder.id
+                    ? { ...msg, content: partialContent }
+                    : msg
+                )
+              );
+              scrollToBottom();
+            }
+          }, stepTime);
+        });
+      }
+
+      // Update conversation title if it's the first message (server-driven)
       if (messages.length === 0 && conversation) {
-        const title = content.length > 50 ? content.substring(0, 50) + "..." : content;
+        const title = content.length > 50 ? content.substring(0, 50) + "…" : content;
         setConversation((prev) => (prev ? { ...prev, title } : prev));
-
-        // Update in conversations list
         setConversations((prev) =>
           prev.map((c) =>
             c.id === conversationId ? { ...c, title, updatedAt: new Date().toISOString() } : c
           )
         );
-
-        // Save to localStorage
-        const stored = localStorage.getItem("atlas-conversations");
-        const convs = stored ? JSON.parse(stored) : [];
-        const updatedConvs = convs.map((c: Conversation) =>
-          c.id === conversationId ? { ...c, title, updatedAt: new Date().toISOString() } : c
-        );
-        localStorage.setItem("atlas-conversations", JSON.stringify(updatedConvs));
       }
     } catch (error) {
       console.error("Failed to send message:", error);
       setMessages((m) => m.filter((x) => !x.isStreaming));
+      toast.error("Failed to send message. Please try again.");
     } finally {
       setIsSending(false);
     }
   };
 
   const handleNew = async () => {
-    // Create new conversation via API
     try {
       const response = await conversationsApi.newChat({ content: "New conversation" });
-      // Response shape: { success: boolean; data: { conversationId: string; message: string; sources: ... } }
-      const conversationId = response.data?.conversationId;
-      if (!conversationId) {
+      const newConvId = response.data?.conversationId;
+      if (!newConvId) {
         throw new Error("No conversation ID returned from backend");
       }
       const newConversation: Conversation = {
-        id: conversationId,
+        id: newConvId,
         title: "New conversation",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        userId: "user-1", // Should come from auth
+        userId: user?.id ?? "",
       };
 
-      // Add to local storage
-      const stored = localStorage.getItem("atlas-conversations");
-      const convs = stored ? JSON.parse(stored) : [];
-      const updated = [...convs, newConversation];
-      localStorage.setItem("atlas-conversations", JSON.stringify(updated));
-      setConversations(updated);
-
-      router.push(`/chat/${conversationId}`);
+      setConversations((prev) => [newConversation, ...prev]);
+      router.push(`/chat/${newConvId}`);
     } catch (error) {
       console.error("Failed to create new conversation:", error);
+      toast.error("Failed to create a new conversation.");
     }
   };
 
   const handleDelete = async (id: string) => {
-    // Note: Backend doesn't expose delete endpoint, so we only remove from localStorage
-    const updated = conversations.filter((c) => c.id !== id);
-    setConversations(updated);
-    localStorage.setItem("atlas-conversations", JSON.stringify(updated));
-    
-    if (id === conversationId) {
-      router.push("/chat");
+    try {
+      await conversationsApi.delete(id);
+      setConversations((prev) => prev.filter((c) => c.id !== id));
+      toast.success("Conversation deleted");
+
+      if (id === conversationId) {
+        router.push("/chat");
+      }
+    } catch (error) {
+      console.error("Failed to delete conversation:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to delete conversation");
     }
   };
 
-  const handleRename = async (id: string) => {
-    const title = prompt("New conversation name:");
-    if (!title) return;
+  const startRename = (id: string) => {
+    const current = conversations.find((c) => c.id === id);
+    setRenameValue(current?.title ?? "");
+    setRenamingId(id);
+  };
 
-    // Update in conversations list
-    const updated = conversations.map((c) =>
-      c.id === id ? { ...c, title, updatedAt: new Date().toISOString() } : c
+  const commitRename = async () => {
+    if (!renamingId) return;
+    const title = renameValue.trim();
+    if (!title) {
+      setRenamingId(null);
+      return;
+    }
+
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === renamingId ? { ...c, title, updatedAt: new Date().toISOString() } : c
+      )
     );
-    setConversations(updated);
-    localStorage.setItem("atlas-conversations", JSON.stringify(updated));
 
-    if (id === conversationId) {
+    if (renamingId === conversationId) {
       setConversation((prev) => (prev ? { ...prev, title } : prev));
     }
+
+    setRenamingId(null);
+    // TODO: persist via API once a rename/PATCH endpoint exists
+  };
+
+  const cancelRename = () => {
+    setRenamingId(null);
+    setRenameValue("");
   };
 
   return (
     <div className="h-full flex">
-      {/* Sidebar */}
+      {/* Conversation Sidebar */}
       <div
         className="hidden md:flex w-64 flex-shrink-0 flex-col border-r h-full"
         style={{ borderColor: "var(--border-subtle)", background: "var(--bg-sidebar)" }}
       >
         <div className="p-3 flex-shrink-0" style={{ borderBottom: "1px solid var(--border-subtle)" }}>
-          <button onClick={handleNew} className="atlas-btn atlas-btn-secondary w-full justify-center text-xs">
-            <Plus size={14} /> New conversation
+          <button
+            onClick={handleNew}
+            className="atlas-btn atlas-btn-secondary w-full justify-center gap-2"
+            style={{ fontSize: "13px", height: 34 }}
+          >
+            <Plus size={14} strokeWidth={2.5} />
+            New conversation
           </button>
         </div>
+
         <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-0.5">
-          {conversations.map((conv) => (
-            <ConversationItem
-              key={conv.id}
-              conversation={conv}
-              isActive={conv.id === conversationId}
-              onSelect={() => router.push(`/chat/${conv.id}`)}
-              onDelete={() => handleDelete(conv.id)}
-              onRename={() => handleRename(conv.id)}
-            />
-          ))}
+          {isLoading
+            ? Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} style={{ height: 32, borderRadius: 8, margin: "2px 0" }} />
+              ))
+            : conversations.map((conv) =>
+                renamingId === conv.id ? (
+                  /* Inline rename input */
+                  <div
+                    key={conv.id}
+                    className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg"
+                    style={{ background: "var(--bg-active)" }}
+                  >
+                    <input
+                      ref={renameInputRef}
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") commitRename();
+                        if (e.key === "Escape") cancelRename();
+                      }}
+                      className="flex-1 min-w-0 bg-transparent outline-none text-[13px]"
+                      style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}
+                    />
+                    <button
+                      onClick={commitRename}
+                      className="p-0.5 rounded transition-colors"
+                      style={{ color: "var(--accent-primary)" }}
+                      aria-label="Confirm rename"
+                    >
+                      <Check size={13} strokeWidth={2.5} />
+                    </button>
+                    <button
+                      onClick={cancelRename}
+                      className="p-0.5 rounded transition-colors"
+                      style={{ color: "var(--text-muted)" }}
+                      aria-label="Cancel rename"
+                    >
+                      <XIcon size={13} />
+                    </button>
+                  </div>
+                ) : (
+                  <ConversationItem
+                    key={conv.id}
+                    conversation={conv}
+                    isActive={conv.id === conversationId}
+                    onSelect={() => router.push(`/chat/${conv.id}`)}
+                    onDelete={() => handleDelete(conv.id)}
+                    onRename={() => startRename(conv.id)}
+                  />
+                )
+              )}
         </div>
       </div>
 
@@ -215,37 +319,49 @@ export default function ConversationPage() {
       <div className="flex-1 flex flex-col min-w-0 h-full">
         {/* Top bar */}
         <div
-          className="flex items-center gap-3 px-4 py-3 flex-shrink-0"
-          style={{ borderBottom: "1px solid var(--border-subtle)" }}
+          className="flex items-center gap-3 px-5 flex-shrink-0"
+          style={{ height: 52, borderBottom: "1px solid var(--border-subtle)" }}
         >
-          <Link href="/chat" className="md:hidden p-1" style={{ color: "var(--text-muted)" }}>
+          <Link href="/chat" className="md:hidden p-1 -ml-1" style={{ color: "var(--text-muted)" }}>
             <ArrowLeft size={18} />
           </Link>
-          <p className="text-sm font-medium truncate" style={{ color: "var(--text-primary)" }}>
-            {isLoading ? "Loading..." : conversation?.title ?? "Conversation"}
-          </p>
+          <span
+            className="font-semibold truncate"
+            style={{
+              color: "var(--text-primary)",
+              fontSize: "15px",
+              letterSpacing: "-0.02em",
+            }}
+          >
+            {isLoading ? (
+              <Skeleton style={{ height: 18, width: 160, display: "inline-block" }} />
+            ) : (
+              conversation?.title ?? "Conversation"
+            )}
+          </span>
         </div>
 
         {/* Messages */}
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="flex-1 overflow-y-auto px-4 py-6 flex flex-col gap-6 relative"
+          className="flex-1 overflow-y-auto py-6 flex flex-col gap-4 relative max-w-4xl w-full mx-auto px-4"
         >
           {isLoading ? (
             <div className="flex flex-col gap-6">
               {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className={`flex gap-3 ${i % 2 === 0 ? "flex-row-reverse" : ""}`}>
-                  <Skeleton className="w-7 h-7 rounded-full" />
+                  <Skeleton className="w-8 h-8 rounded-full" style={{ flexShrink: 0 }} />
                   <div className="flex flex-col gap-2 max-w-md">
-                    <Skeleton style={{ height: "14px", width: i % 2 === 0 ? "180px" : "280px" }} />
-                    <Skeleton style={{ height: "14px", width: "220px" }} />
+                    <Skeleton style={{ height: 16, width: i % 2 === 0 ? "180px" : "300px" }} />
+                    <Skeleton style={{ height: 16, width: "240px" }} />
+                    {i % 2 !== 0 && <Skeleton style={{ height: 16, width: "200px" }} />}
                   </div>
                 </div>
               ))}
             </div>
           ) : messages.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center">
+            <div className="flex-1 flex items-center justify-center min-h-[60vh]">
               <EmptyState
                 title="Ask a question"
                 description="Type below to query your indexed documents."
