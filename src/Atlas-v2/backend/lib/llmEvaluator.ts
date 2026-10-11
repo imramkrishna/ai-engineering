@@ -22,7 +22,6 @@ try {
   }) as Evaluator;
 } catch (error) {
   console.error("Failed to initialize LLM evaluator:", error);
-  // Create a fallback evaluator that returns a default response
   correctnessEvaluator = async () => ({
     key: 'score',
     score: false,
