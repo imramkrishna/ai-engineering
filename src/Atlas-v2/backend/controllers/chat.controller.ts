@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { auth } from "../lib/auth.js";
 import {
   conversationExists,
+  deleteConversation,
   generateLangchainMessages,
   getMessages,
   listConversations,
@@ -14,22 +15,6 @@ import { conversations, db, messages } from "../../../packages/db/index.js";
 const chatModel = getChatModel();
 export const chatController = async (req: Request, res: Response) => {
   const { conversationId, query } = req.body;
-
-  // Validate input
-  if (!conversationId || typeof conversationId !== "string") {
-    return res.status(400).json({
-      success: false,
-      message: "Valid conversationId is required.",
-    });
-  }
-
-  if (!query || typeof query !== "string" || !query.trim()) {
-    return res.status(400).json({
-      success: false,
-      message: "A valid query is required.",
-    });
-  }
-
   const session = await auth.api.getSession({
     headers: new Headers(req.headers as Record<string, string>),
   });
@@ -45,9 +30,9 @@ export const chatController = async (req: Request, res: Response) => {
       session.user.id,
     );
     if (!conversation) {
-      return res.status(404).json({
+      return res.status(402).json({
         success: false,
-        message: "Conversation not found",
+        message: "user not found",
       });
     }
     const previousMessages = await getMessages(conversationId);
@@ -76,7 +61,7 @@ export const chatController = async (req: Request, res: Response) => {
       ...history,
       new HumanMessage(`Context:\n${context}\n\nQuestion:\n${query}`),
     ]);
-    const sources = chunks.map((chunk, index) => ({
+    let sources = chunks.map((chunk, index) => ({
       source: `Source ${index + 1}`,
       documentId: chunk.documentId,
       documentName: chunk.documentName,
@@ -94,13 +79,9 @@ export const chatController = async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.error("Error in chatController:", error);
     return res.status(500).json({
       success: false,
       message: "Error while processing your request.",
-      ...(process.env.NODE_ENV !== "production"
-        ? { error: error instanceof Error ? error.message : "Unknown error" }
-        : {}),
     });
   }
 };
@@ -277,6 +258,50 @@ export const newChatController = async (req: Request, res: Response) => {
       ...(process.env.NODE_ENV !== "production"
         ? { error: error instanceof Error ? error.message : "Unknown error" }
         : {}),
+    });
+  }
+};
+
+export const deleteConversationController = async (req: Request, res: Response) => {
+  const conversationId = Array.isArray(req.params.conversationId)
+    ? req.params.conversationId[0]
+    : req.params.conversationId;
+  const session = await auth.api.getSession({
+    headers: new Headers(req.headers as Record<string, string>),
+  });
+
+  if (!session?.user) {
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized.",
+    });
+  }
+
+  if (!conversationId) {
+    return res.status(400).json({
+      success: false,
+      message: "Conversation ID is required.",
+    });
+  }
+
+  try {
+    const deleted = await deleteConversation(conversationId, session.user.id);
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        message: "Conversation not found or you don't have permission to delete it.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Conversation deleted successfully.",
+    });
+  } catch (error) {
+    console.error("Error deleting conversation:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error while deleting conversation.",
     });
   }
 };

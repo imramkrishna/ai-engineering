@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { uploadDocumentsController } from "../controllers/upload.controller.js";
+import { deleteDocumentController, uploadDocumentsController } from "../controllers/upload.controller.js";
 import { getUploadedDocuments } from "../controllers/upload.controller.js";
 import upload from "../config/multer.config.js";
 
@@ -14,6 +14,11 @@ uploadRouter.post(
 uploadRouter.get(
   "/documents",
   getUploadedDocuments,
+);
+
+uploadRouter.delete(
+  "/document/:documentId",
+  deleteDocumentController,
 );
 
 export default uploadRouter;

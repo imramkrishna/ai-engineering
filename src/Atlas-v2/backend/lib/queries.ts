@@ -4,6 +4,7 @@ import {
   conversations,
   documentChunks,
   documents,
+  ingestionJobs,
   messages,
 } from "../../../packages/db/index.js";
 import { embeddingModel } from "../../../Prompt-Lab/models.js";
@@ -39,11 +40,11 @@ export async function conversationExists(
   const conversation = await db
     .select()
     .from(conversations)
-    .where(
-      and(eq(conversations.id, conversationId), eq(conversations.userId, userId)),
-    )
-    .limit(1);
-  return conversation.length > 0;
+    .where(and(eq(conversations.id, conversationId), eq(conversations.userId, userId)));
+  if (!conversation || conversation.length === 0) {
+    return false;
+  }
+  return true;
 }
 
 export async function listConversations(userId: string) {
@@ -66,7 +67,7 @@ export async function getMessages(conversationId: string) {
     .select()
     .from(messages)
     .where(eq(messages.conversationId, conversationId))
-    .orderBy(desc(messages.createdAt));
+    .orderBy(asc(messages.createdAt));
   return conversationMessages;
 }
 
@@ -84,6 +85,7 @@ export async function saveMessage(
     })
     .returning({ id: messages.id });
 }
+
 export async function retrieveRelevantChunks(params: {
   question: string;
   userId: string;
@@ -136,4 +138,97 @@ export function generateLangchainMessages(
     throw new Error(`Unknown message role: ${message.role}`);
   });
   return history;
+}
+
+// ─── Delete Queries ────────────────────────────────────────────────
+
+/**
+ * Delete a conversation and all of its messages.
+ * Messages are removed explicitly because the current foreign key does not
+ * declare database-level cascade behavior.
+ */
+export async function deleteConversation(
+  conversationId: string,
+  userId: string,
+): Promise<boolean> {
+  const ownedConversation = await db
+    .select({ id: conversations.id })
+    .from(conversations)
+    .where(
+      and(
+        eq(conversations.id, conversationId),
+        eq(conversations.userId, userId),
+      ),
+    );
+
+  if (ownedConversation.length === 0) {
+    return false;
+  }
+
+  await db
+    .delete(messages)
+    .where(eq(messages.conversationId, conversationId));
+
+  const deleted = await db
+    .delete(conversations)
+    .where(
+      and(
+        eq(conversations.id, conversationId),
+        eq(conversations.userId, userId),
+      ),
+    )
+    .returning({ id: conversations.id });
+  return deleted.length > 0;
+}
+
+/**
+ * Delete a document and ALL associated data:
+ * - document chunks (embeddings)
+ * - ingestion jobs
+ * - the document row itself
+ *
+ * The documentChunks and ingestionJobs tables have FKs with onDelete: "cascade",
+ * so deleting the document row is enough. We delete explicitly for clarity
+ * and to guarantee cleanup even if FK constraints are not enforced.
+ */
+export async function deleteDocument(
+  documentId: string,
+  userId: string,
+): Promise<{ id: string; storageKey: string } | null> {
+  const ownedDocument = await db
+    .select({
+      id: documents.id,
+      storageKey: documents.storageKey,
+    })
+    .from(documents)
+    .where(
+      and(eq(documents.id, documentId), eq(documents.userId, userId)),
+    );
+
+  if (ownedDocument.length === 0) {
+    return null;
+  }
+
+  // 1. Delete ingestion jobs for this document.
+  await db
+    .delete(ingestionJobs)
+    .where(
+      and(
+        eq(ingestionJobs.documentId, documentId),
+        eq(ingestionJobs.userId, userId),
+      ),
+    );
+
+  // 2. Delete document chunks (embeddings) for this document.
+  await db
+    .delete(documentChunks)
+    .where(eq(documentChunks.documentId, documentId));
+
+  // 3. Delete the document itself after ownership was verified.
+  const deleted = await db
+    .delete(documents)
+    .where(eq(documents.id, documentId))
+    .returning({ id: documents.id, storageKey: documents.storageKey });
+
+  return deleted[0] ?? null;
 }
