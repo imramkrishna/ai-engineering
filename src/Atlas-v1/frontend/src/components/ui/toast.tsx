@@ -7,21 +7,18 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <>
       {children}
       <Toaster
-        position="top-right"
+        position="bottom-right"
+        offset={20}
+        gap={8}
+        visibleToasts={4}
+        richColors={false}
+        closeButton
         toastOptions={{
-          className: "atlas-toast",
-          style: {
-            background: "var(--bg-primary)",
-            border: "1px solid var(--border)",
-            color: "var(--text-primary)",
-            borderRadius: "8px",
-            padding: "12px 16px",
-            fontSize: "14px",
-            fontWeight: "500",
+          duration: 4000,
+          classNames: {
+            toast: "atlas-sonner-toast",
           },
         }}
-        richColors
-        closeButton
       />
     </>
   );

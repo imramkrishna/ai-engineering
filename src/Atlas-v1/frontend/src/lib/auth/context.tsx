@@ -19,13 +19,16 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { data: sessionData, isPending } = authClient.useSession();
 
-  const user: User | null = sessionData?.user ? {
-    id: sessionData.user?.id,
-    name: sessionData.user?.name,
-    email: sessionData.user?.email,
-    avatarUrl: sessionData.user?.image ?? undefined,
-    createdAt: new Date(sessionData.user?.createdAt ?? Date.now()).toISOString(),
-  } : null;
+  const user: User | null = React.useMemo(() => {
+    if (!sessionData?.user) return null;
+    return {
+      id: sessionData.user.id,
+      name: sessionData.user.name,
+      email: sessionData.user.email,
+      avatarUrl: (sessionData.user as { image?: string | null })?.image ?? undefined,
+      createdAt: sessionData.user.createdAt ? new Date(sessionData.user.createdAt).toISOString() : "",
+    };
+  }, [sessionData?.user]);
 
   const login = useCallback(async (email: string, password: string) => {
     try {

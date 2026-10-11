@@ -1,26 +1,27 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import {
   Send,
   RefreshCcw,
   Copy,
   Check,
   ChevronDown,
-  BookOpen,
   Bug,
   X,
-  Paperclip,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { cn, formatRelativeDate } from "@/lib/utils";
 import type { Message, Citation, DebugInfo } from "@/types";
-import { Spinner, Button, EmptyState, Skeleton } from "@/components/ui";
+import { Spinner } from "@/components/ui";
 
 // ─── Typing Indicator ─────────────────────────────────────────
 export function TypingIndicator() {
   return (
-    <div className="flex items-center gap-1 px-4 py-3">
-      <div className="flex gap-1">
+    <div className="flex items-center gap-1 py-1">
+      <div className="flex gap-[5px] items-center">
         <div className="typing-dot" />
         <div className="typing-dot" />
         <div className="typing-dot" />
@@ -40,11 +41,11 @@ function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={copy}
-      className="atlas-btn atlas-btn-ghost px-2 py-1 text-xs gap-1"
+      className="atlas-btn atlas-btn-ghost py-1 px-2 text-xs gap-1.5 h-7"
       aria-label="Copy message"
     >
-      {copied ? <Check size={12} /> : <Copy size={12} />}
-      {copied ? "Copied" : "Copy"}
+      {copied ? <Check size={12} strokeWidth={2.5} /> : <Copy size={12} />}
+      <span>{copied ? "Copied" : "Copy"}</span>
     </button>
   );
 }
@@ -52,7 +53,11 @@ function CopyButton({ text }: { text: string }) {
 // ─── Citation Marker (inline) ─────────────────────────────────
 function CitationMarker({ num, onClick }: { num: number; onClick: () => void }) {
   return (
-    <button className="citation-marker" onClick={onClick} aria-label={`View source ${num}`}>
+    <button
+      className="citation-marker"
+      onClick={onClick}
+      aria-label={`View source ${num}`}
+    >
       {num}
     </button>
   );
@@ -70,14 +75,20 @@ function RenderContent({
 }) {
   if (!citations?.length) {
     return (
-      <div className="prose-atlas" dangerouslySetInnerHTML={{ __html: simpleMarkdown(content) }} />
+      <div
+        className="prose text-[13.5px] leading-[1.7]"
+        style={{ color: "var(--text-primary)" }}
+        dangerouslySetInnerHTML={{ __html: simpleMarkdown(content) }}
+      />
     );
   }
 
-  // Replace [N] with interactive citation markers
   const parts = content.split(/(\[\d+\])/g);
   return (
-    <div className="prose-atlas leading-relaxed">
+    <div
+      className="prose text-[13.5px] leading-[1.7]"
+      style={{ color: "var(--text-primary)" }}
+    >
       {parts.map((part, i) => {
         const match = part.match(/^\[(\d+)\]$/);
         if (match) {
@@ -99,7 +110,6 @@ function RenderContent({
   );
 }
 
-// Minimal markdown renderer (bold, italic, code, code blocks, newlines)
 function simpleMarkdown(text: string): string {
   return text
     .replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) =>
@@ -122,11 +132,15 @@ function escapeHtml(str: string) {
 export function SourceCard({ citation, onClose }: { citation: Citation; onClose: () => void }) {
   return (
     <div
-      className="animate-fade-in rounded-[var(--radius-lg)] p-4 flex flex-col gap-2"
-      style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)" }}
+      className="animate-scale-in mt-3 rounded-xl p-4 flex flex-col gap-3"
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--border-default)",
+        boxShadow: "var(--shadow-sm)",
+      }}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-2">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2.5">
           <span
             className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
             style={{ background: "var(--accent-primary-muted)", color: "var(--accent-primary)" }}
@@ -134,26 +148,49 @@ export function SourceCard({ citation, onClose }: { citation: Citation; onClose:
             {citation.sourceId}
           </span>
           <div>
-            <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>{citation.title}</p>
+            <p className="text-[13px] font-medium" style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}>
+              {citation.title}
+            </p>
             {citation.page && (
-              <p className="text-xs" style={{ color: "var(--text-muted)" }}>Page {citation.page}</p>
+              <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                Page {citation.page}
+              </p>
             )}
           </div>
         </div>
-        <button onClick={onClose} style={{ color: "var(--text-muted)" }}>
+        <button
+          onClick={onClose}
+          className="p-1 rounded-md transition-colors flex-shrink-0"
+          style={{ color: "var(--text-muted)" }}
+          aria-label="Close"
+        >
           <X size={14} />
         </button>
       </div>
       <blockquote
-        className="text-xs leading-relaxed border-l-2 pl-3 italic"
-        style={{ borderColor: "var(--accent-primary)", color: "var(--text-secondary)" }}
+        className="text-[12.5px] leading-relaxed border-l-2 pl-3"
+        style={{ borderColor: "var(--accent-primary)", color: "var(--text-secondary)", fontStyle: "italic" }}
       >
-        "{citation.quote}"
+        &ldquo;{citation.quote}&rdquo;
       </blockquote>
       {citation.score && (
-        <p className="text-xs" style={{ color: "var(--text-muted)" }}>
-          Relevance: {(citation.score * 100).toFixed(0)}%
-        </p>
+        <div className="flex items-center gap-2">
+          <div
+            className="h-1 rounded-full flex-1 overflow-hidden"
+            style={{ background: "var(--border-default)" }}
+          >
+            <div
+              className="h-full rounded-full"
+              style={{
+                width: `${(citation.score * 100).toFixed(0)}%`,
+                background: "var(--accent-primary)",
+              }}
+            />
+          </div>
+          <span className="text-xs flex-shrink-0" style={{ color: "var(--text-muted)" }}>
+            {(citation.score * 100).toFixed(0)}% match
+          </span>
+        </div>
       )}
     </div>
   );
@@ -162,27 +199,47 @@ export function SourceCard({ citation, onClose }: { citation: Citation; onClose:
 // ─── Citation List ────────────────────────────────────────────
 export function CitationList({ citations }: { citations: Citation[] }) {
   return (
-    <div className="flex flex-col gap-2 mt-3">
-      <p className="text-xs font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+    <div className="flex flex-col gap-2 mt-4">
+      <p
+        className="text-[11px] font-semibold uppercase tracking-widest"
+        style={{ color: "var(--text-muted)", letterSpacing: "0.08em" }}
+      >
         Sources
       </p>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1.5">
         {citations.map((c) => (
           <div
             key={c.sourceId}
-            className="flex items-start gap-3 p-3 rounded-[var(--radius-md)]"
-            style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)" }}
+            className="flex items-start gap-3 p-3 rounded-lg transition-colors"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--border-subtle)",
+            }}
           >
             <span
-              className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5"
+              className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 mt-0.5"
               style={{ background: "var(--accent-primary-muted)", color: "var(--accent-primary)" }}
             >
               {c.sourceId}
             </span>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium" style={{ color: "var(--text-primary)" }}>{c.title}</p>
-              {c.page && <p className="text-xs" style={{ color: "var(--text-muted)" }}>Page {c.page}</p>}
-              <p className="text-xs mt-1 line-clamp-2" style={{ color: "var(--text-secondary)" }}>"{c.quote}"</p>
+              <p
+                className="text-[12.5px] font-medium"
+                style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}
+              >
+                {c.title}
+              </p>
+              {c.page && (
+                <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                  Page {c.page}
+                </p>
+              )}
+              <p
+                className="text-xs mt-1.5 line-clamp-2 leading-relaxed"
+                style={{ color: "var(--text-secondary)", fontStyle: "italic" }}
+              >
+                &ldquo;{c.quote}&rdquo;
+              </p>
             </div>
           </div>
         ))}
@@ -195,17 +252,38 @@ export function CitationList({ citations }: { citations: Citation[] }) {
 function DebugPanel({ debug }: { debug: DebugInfo }) {
   return (
     <div
-      className="mt-3 p-3 rounded-[var(--radius-md)] text-xs font-mono"
-      style={{ background: "var(--bg-base)", border: "1px solid var(--border-subtle)", color: "var(--text-secondary)" }}
+      className="mt-3 p-3.5 rounded-lg text-xs font-mono"
+      style={{
+        background: "var(--bg-base)",
+        border: "1px solid var(--border-subtle)",
+        color: "var(--text-secondary)",
+      }}
     >
-      <p className="font-semibold mb-2" style={{ color: "var(--text-primary)", fontFamily: "var(--font-sans)" }}>Debug info</p>
-      <div className="grid grid-cols-2 gap-1">
-        {debug.retrievedChunks && <><span style={{ color: "var(--text-muted)" }}>Retrieved chunks</span><span>{debug.retrievedChunks}</span></>}
-        {debug.topScore && <><span style={{ color: "var(--text-muted)" }}>Top score</span><span>{(debug.topScore * 100).toFixed(0)}%</span></>}
-        {debug.model && <><span style={{ color: "var(--text-muted)" }}>Model</span><span>{debug.model}</span></>}
-        {debug.latencyMs && <><span style={{ color: "var(--text-muted)" }}>Latency</span><span>{debug.latencyMs}ms</span></>}
-        {debug.embeddingModel && <><span style={{ color: "var(--text-muted)" }}>Embeddings</span><span>{debug.embeddingModel}</span></>}
-        {debug.retrievalMode && <><span style={{ color: "var(--text-muted)" }}>Mode</span><span>{debug.retrievalMode}</span></>}
+      <p
+        className="font-semibold mb-2.5 text-[11px] uppercase tracking-wider"
+        style={{ color: "var(--text-muted)", fontFamily: "var(--font-sans)" }}
+      >
+        Debug
+      </p>
+      <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
+        {debug.retrievedChunks && (
+          <><span style={{ color: "var(--text-muted)" }}>Chunks</span><span>{debug.retrievedChunks}</span></>
+        )}
+        {debug.topScore && (
+          <><span style={{ color: "var(--text-muted)" }}>Top score</span><span>{(debug.topScore * 100).toFixed(0)}%</span></>
+        )}
+        {debug.model && (
+          <><span style={{ color: "var(--text-muted)" }}>Model</span><span>{debug.model}</span></>
+        )}
+        {debug.latencyMs && (
+          <><span style={{ color: "var(--text-muted)" }}>Latency</span><span>{debug.latencyMs}ms</span></>
+        )}
+        {debug.embeddingModel && (
+          <><span style={{ color: "var(--text-muted)" }}>Embeddings</span><span>{debug.embeddingModel}</span></>
+        )}
+        {debug.retrievalMode && (
+          <><span style={{ color: "var(--text-muted)" }}>Mode</span><span>{debug.retrievalMode}</span></>
+        )}
       </div>
     </div>
   );
@@ -226,36 +304,49 @@ export function ChatMessage({
   const debug = message.ragAnswer?.debugInfo;
 
   return (
-    <div className={cn("flex gap-3 group animate-fade-in", isUser && "flex-row-reverse")}>
+    <div className={cn("flex gap-3 group animate-fade-in px-4 py-1", isUser && "flex-row-reverse")}>
       {/* Avatar */}
       <div
-        className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5"
-        style={{
-          background: isUser ? "var(--bg-card)" : "var(--accent-primary)",
-          border: "1px solid var(--border-subtle)",
-          color: isUser ? "var(--text-secondary)" : "#000",
-        }}
+        className="w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold flex-shrink-0 mt-1"
+        style={
+          isUser
+            ? {
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--border-default)",
+                color: "var(--text-secondary)",
+              }
+            : {
+                background: "var(--accent-primary)",
+                color: "#021a19",
+                boxShadow: "0 0 10px var(--accent-primary-glow)",
+              }
+        }
       >
         {isUser ? "U" : "A"}
       </div>
 
-      {/* Bubble */}
-      <div className={cn("flex flex-col gap-2 max-w-2xl", isUser && "items-end")}>
+      {/* Content */}
+      <div className={cn("flex flex-col gap-1.5 max-w-2xl min-w-0", isUser && "items-end")}>
         {isUser ? (
           <div
-            className="px-4 py-3 rounded-[var(--radius-lg)] text-sm"
-            style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", color: "var(--text-primary)" }}
+            className="px-4 py-3 rounded-2xl text-[13.5px] leading-relaxed"
+            style={{
+              background: "var(--bg-elevated)",
+              border: "1px solid var(--border-default)",
+              color: "var(--text-primary)",
+              borderBottomRightRadius: 6,
+            }}
           >
             {message.content}
           </div>
         ) : (
           <div>
             {message.isStreaming ? (
-              <div className="flex items-center gap-2 py-2">
+              <div className="py-2">
                 <TypingIndicator />
               </div>
             ) : (
-              <div className="text-sm" style={{ color: "var(--text-primary)" }}>
+              <div>
                 <RenderContent
                   content={message.content}
                   citations={citations}
@@ -263,7 +354,10 @@ export function ChatMessage({
                 />
                 {citations.length > 0 && <CitationList citations={citations} />}
                 {activeCitation && (
-                  <SourceCard citation={activeCitation} onClose={() => setActiveCitation(null)} />
+                  <SourceCard
+                    citation={activeCitation}
+                    onClose={() => setActiveCitation(null)}
+                  />
                 )}
                 {debug && showDebug && <DebugPanel debug={debug} />}
               </div>
@@ -271,24 +365,32 @@ export function ChatMessage({
           </div>
         )}
 
-        {/* Actions */}
+        {/* Message actions */}
         {!isUser && !message.isStreaming && (
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 -mt-0.5">
             <CopyButton text={message.content} />
             {onRegenerate && (
-              <button onClick={onRegenerate} className="atlas-btn atlas-btn-ghost px-2 py-1 text-xs gap-1">
-                <RefreshCcw size={12} /> Retry
+              <button
+                onClick={onRegenerate}
+                className="atlas-btn atlas-btn-ghost py-1 px-2 text-xs gap-1.5 h-7"
+              >
+                <RefreshCcw size={12} />
+                Retry
               </button>
             )}
             {debug && (
               <button
                 onClick={() => setShowDebug((v) => !v)}
-                className="atlas-btn atlas-btn-ghost px-2 py-1 text-xs gap-1"
+                className="atlas-btn atlas-btn-ghost py-1 px-2 text-xs gap-1.5 h-7"
               >
-                <Bug size={12} /> Debug
+                <Bug size={12} />
+                Debug
               </button>
             )}
-            <span className="text-xs ml-1" style={{ color: "var(--text-muted)" }}>
+            <span
+              className="text-[11px] ml-1.5"
+              style={{ color: "var(--text-muted)" }}
+            >
               {formatRelativeDate(message.createdAt)}
             </span>
           </div>
@@ -306,7 +408,12 @@ interface ChatInputProps {
   disabled?: boolean;
 }
 
-export function ChatInput({ onSend, isLoading, placeholder = "Ask a question about your documents…", disabled }: ChatInputProps) {
+export function ChatInput({
+  onSend,
+  isLoading,
+  placeholder = "Ask a question about your documents…",
+  disabled,
+}: ChatInputProps) {
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -314,7 +421,7 @@ export function ChatInput({ onSend, isLoading, placeholder = "Ask a question abo
     const ta = textareaRef.current;
     if (!ta) return;
     ta.style.height = "auto";
-    ta.style.height = Math.min(ta.scrollHeight, 180) + "px";
+    ta.style.height = Math.min(ta.scrollHeight, 200) + "px";
   };
 
   const submit = useCallback(() => {
@@ -332,42 +439,75 @@ export function ChatInput({ onSend, isLoading, placeholder = "Ask a question abo
     }
   };
 
+  const hasValue = value.trim().length > 0;
+
   return (
     <div
       className="px-4 py-3 flex-shrink-0"
       style={{ borderTop: "1px solid var(--border-subtle)", background: "var(--bg-base)" }}
     >
       <div
-        className="flex items-end gap-2 rounded-[var(--radius-lg)] px-4 py-3"
-        style={{ background: "var(--bg-input)", border: "1px solid var(--border-default)" }}
+        className="flex items-end gap-2 rounded-2xl px-4 py-3 transition-all duration-150"
+        style={{
+          background: "var(--bg-elevated)",
+          border: `1px solid ${hasValue ? "var(--border-focus)" : "var(--border-default)"}`,
+          boxShadow: hasValue ? "0 0 0 3px rgba(32,178,170,0.06)" : "none",
+        }}
       >
         <textarea
           ref={textareaRef}
           value={value}
-          onChange={(e) => { setValue(e.target.value); adjustHeight(); }}
+          onChange={(e) => {
+            setValue(e.target.value);
+            adjustHeight();
+          }}
           onKeyDown={handleKey}
           placeholder={placeholder}
           disabled={disabled || isLoading}
           rows={1}
-          className="flex-1 resize-none bg-transparent outline-none text-sm leading-relaxed"
-          style={{ color: "var(--text-primary)", minHeight: "24px", maxHeight: "180px" }}
+          className="flex-1 resize-none bg-transparent outline-none leading-relaxed"
+          style={{
+            color: "var(--text-primary)",
+            fontSize: "13.5px",
+            minHeight: "22px",
+            maxHeight: "200px",
+            fontFamily: "var(--font-sans)",
+            letterSpacing: "-0.01em",
+          }}
           aria-label="Chat input"
         />
         <button
           onClick={submit}
-          disabled={!value.trim() || isLoading || disabled}
-          className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all"
+          disabled={!hasValue || isLoading || disabled}
+          className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-150"
           style={{
-            background: value.trim() && !isLoading ? "var(--accent-primary)" : "var(--bg-hover)",
-            color: value.trim() && !isLoading ? "#000" : "var(--text-muted)",
+            background: hasValue && !isLoading ? "var(--accent-primary)" : "var(--bg-hover)",
+            color: hasValue && !isLoading ? "#021a19" : "var(--text-muted)",
+            transform: hasValue && !isLoading ? "scale(1)" : "scale(0.92)",
           }}
           aria-label="Send message"
         >
-          {isLoading ? <Spinner size={14} /> : <Send size={14} />}
+          {isLoading ? <Spinner size={13} /> : <Send size={13} strokeWidth={2.5} />}
         </button>
       </div>
-      <p className="text-xs mt-2 text-center" style={{ color: "var(--text-muted)" }}>
-        Enter to send · Shift+Enter for newline
+      <p
+        className="text-[11.5px] mt-2 text-center select-none"
+        style={{ color: "var(--text-muted)", letterSpacing: "-0.01em" }}
+      >
+        <kbd
+          className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono"
+          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-default)" }}
+        >
+          ↵ Enter
+        </kbd>
+        {" "}to send ·{" "}
+        <kbd
+          className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-mono"
+          style={{ background: "var(--bg-elevated)", border: "1px solid var(--border-default)" }}
+        >
+          ⇧ Shift+↵
+        </kbd>
+        {" "}for new line
       </p>
     </div>
   );
@@ -379,12 +519,19 @@ export function ScrollToBottom({ onClick, visible }: { onClick: () => void; visi
     <button
       onClick={onClick}
       className={cn(
-        "absolute bottom-24 right-6 w-8 h-8 rounded-full flex items-center justify-center transition-all",
-        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2 pointer-events-none"
+        "absolute bottom-28 right-6 w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200",
+        visible
+          ? "opacity-100 translate-y-0 pointer-events-auto"
+          : "opacity-0 translate-y-2 pointer-events-none"
       )}
-      style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", color: "var(--text-secondary)" }}
+      style={{
+        background: "var(--bg-elevated)",
+        border: "1px solid var(--border-default)",
+        color: "var(--text-secondary)",
+        boxShadow: "var(--shadow-md)",
+      }}
     >
-      <ChevronDown size={16} />
+      <ChevronDown size={15} />
     </button>
   );
 }
@@ -408,51 +555,93 @@ export function ConversationItem({
   return (
     <div
       className={cn(
-        "group flex items-center gap-2 px-3 py-2 rounded-[var(--radius-md)] cursor-pointer relative",
-        "transition-all",
-        isActive ? "active" : ""
+        "group flex items-center gap-1.5 px-2.5 py-2 rounded-lg cursor-pointer relative transition-colors",
       )}
       style={{
         background: isActive ? "var(--bg-active)" : "transparent",
         color: isActive ? "var(--text-primary)" : "var(--text-secondary)",
       }}
       onClick={onSelect}
+      onMouseEnter={(e) => {
+        if (!isActive) e.currentTarget.style.background = "var(--bg-hover)";
+      }}
+      onMouseLeave={(e) => {
+        if (!isActive) e.currentTarget.style.background = "transparent";
+      }}
     >
-      <span className="flex-1 min-w-0 text-xs truncate">{conversation.title}</span>
-      <span className="text-xs flex-shrink-0 opacity-60">{formatRelativeDate(conversation.updatedAt)}</span>
+      <span
+        className="flex-1 min-w-0 text-[12.5px] truncate"
+        style={{ letterSpacing: "-0.01em", fontWeight: isActive ? 500 : 400 }}
+      >
+        {conversation.title}
+      </span>
 
       {/* Context menu */}
-      <div className="relative">
+      <div className="relative flex-shrink-0">
         <button
-          onClick={(e) => { e.stopPropagation(); setMenuOpen((v) => !v); }}
-          className="opacity-0 group-hover:opacity-100 p-0.5 rounded transition-opacity"
+          onClick={(e) => {
+            e.stopPropagation();
+            setMenuOpen((v) => !v);
+          }}
+          className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded-md transition-all"
           style={{ color: "var(--text-muted)" }}
           aria-label="Conversation options"
         >
-          ···
+          <MoreHorizontal size={13} />
         </button>
+
         {menuOpen && (
-          <div
-            className="absolute right-0 top-6 w-36 rounded-[var(--radius-md)] py-1 z-50"
-            style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", boxShadow: "var(--shadow-md)" }}
-          >
-            <button
-              className="w-full text-left px-3 py-2 text-xs hover:bg-[var(--bg-hover)] transition-colors"
-              style={{ color: "var(--text-secondary)" }}
-              onClick={(e) => { e.stopPropagation(); onRename(); setMenuOpen(false); }}
+          <>
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 z-40"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen(false);
+              }}
+            />
+            <div
+              className="absolute right-0 top-7 w-40 rounded-xl py-1 z-50 animate-scale-in"
+              style={{
+                background: "var(--bg-elevated)",
+                border: "1px solid var(--border-default)",
+                boxShadow: "var(--shadow-lg)",
+              }}
             >
-              Rename
-            </button>
-            <button
-              className="w-full text-left px-3 py-2 text-xs transition-colors"
-              style={{ color: "var(--status-error)" }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(239,68,68,0.08)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "")}
-              onClick={(e) => { e.stopPropagation(); onDelete(); setMenuOpen(false); }}
-            >
-              Delete
-            </button>
-          </div>
+              <button
+                className="w-full text-left px-3 py-2 text-[12.5px] flex items-center gap-2.5 transition-colors"
+                style={{ color: "var(--text-secondary)" }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-hover)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRename();
+                  setMenuOpen(false);
+                }}
+              >
+                <Pencil size={12} />
+                Rename
+              </button>
+              <div
+                className="my-1 mx-2"
+                style={{ height: 1, background: "var(--border-subtle)" }}
+              />
+              <button
+                className="w-full text-left px-3 py-2 text-[12.5px] flex items-center gap-2.5 transition-colors"
+                style={{ color: "var(--status-error)" }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "var(--status-error-bg)")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "")}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                  setMenuOpen(false);
+                }}
+              >
+                <Trash2 size={12} />
+                Delete
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>

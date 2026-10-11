@@ -39,8 +39,14 @@ export default function DocumentDetailPage() {
   };
 
   const handleRetry = async () => {
-    const updated = await mockDocumentsApi.retry(id);
-    setDoc(updated);
+    try {
+      await documentsApi.retry(id);
+      toast.success("Document re-processing started");
+      const documents = await documentsApi.getAll();
+      setDoc(documents.find((d) => d.id === id) ?? null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to retry processing");
+    }
   };
 
   if (isLoading) return (
@@ -59,7 +65,17 @@ export default function DocumentDetailPage() {
 
   if (isError || !doc) return (
     <div className="p-6 max-w-3xl mx-auto">
-      <ErrorState title="Document not found" onRetry={() => { setIsError(false); setIsLoading(true); mockDocumentsApi.get(id).then(setDoc).finally(() => setIsLoading(false)); }} />
+      <ErrorState
+        title="Document not found"
+        onRetry={() => {
+          setIsError(false);
+          setIsLoading(true);
+          documentsApi.getAll()
+            .then((docs) => setDoc(docs.find((d) => d.id === id) ?? null))
+            .catch(() => setIsError(true))
+            .finally(() => setIsLoading(false));
+        }}
+      />
     </div>
   );
 

@@ -11,17 +11,14 @@ import {
   ArrowRight,
   TrendingUp,
   Clock,
-  CheckCircle2,
-  Loader2,
+  HardDrive,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth/context";
 import { mockConversationsApi, mockDocumentsApi, mockAccountApi } from "@/lib/mock";
 import type { Conversation, Document, UsageStats } from "@/types";
-import { Card, Skeleton, Button } from "@/components/ui";
+import { Skeleton, Button } from "@/components/ui";
 import { formatRelativeDate, formatBytes, truncate } from "@/lib/utils";
-
-// Can't import from documents component directly in this page without circular issues
-// so re-export the StatusBadge from documents directly
 import { StatusBadge as DocStatusBadge } from "@/components/documents";
 
 export default function DashboardPage() {
@@ -55,89 +52,171 @@ export default function DashboardPage() {
     router.push(`/chat/${conv.id}`);
   };
 
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const [greeting, setGreeting] = useState("Welcome back");
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+    setGreeting(hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening");
+  }, []);
+
+  const firstName = user?.name.split(" ")[0] ?? "";
+
+  const statItems = stats
+    ? [
+        { label: "Documents", value: stats.documentCount, icon: FileText, color: "var(--accent-primary)" },
+        { label: "Conversations", value: stats.conversationCount, icon: MessageSquare, color: "#818cf8" },
+        { label: "Messages", value: stats.messageCount ?? 0, icon: TrendingUp, color: "#34d399" },
+        { label: "Storage", value: formatBytes(stats.storageBytes ?? 0), icon: HardDrive, color: "#fb923c" },
+      ]
+    : [];
 
   return (
-    <div className="flex flex-col gap-8 p-6 max-w-5xl mx-auto w-full animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-semibold" style={{ color: "var(--text-primary)" }}>
-          {greeting}{user ? `, ${user.name.split(" ")[0]}` : ""}
+    <div className="flex flex-col gap-8 p-6 max-w-5xl mx-auto w-full animate-fade-in-up">
+
+      {/* ── Greeting ── */}
+      <div className="flex flex-col gap-1 pt-2">
+        <h1
+          className="text-[26px] font-semibold tracking-tight"
+          style={{ color: "var(--text-primary)", letterSpacing: "-0.04em", lineHeight: 1.15 }}
+        >
+          {greeting}{firstName ? `, ${firstName}` : ""}
         </h1>
-        <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-          Your AI-powered RAG workspace
+        <p className="text-[13.5px]" style={{ color: "var(--text-muted)", letterSpacing: "-0.01em" }}>
+          Your AI workspace is ready. What would you like to explore?
         </p>
       </div>
 
-      {/* Quick actions */}
+      {/* ── Quick actions ── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <button
           onClick={handleNewChat}
-          className="flex items-start gap-4 p-5 rounded-[var(--radius-lg)] text-left transition-all"
-          style={{ background: "var(--accent-primary)", color: "#000" }}
-          onMouseEnter={(e) => (e.currentTarget.style.opacity = "0.92")}
-          onMouseLeave={(e) => (e.currentTarget.style.opacity = "1")}
+          className="flex items-center gap-4 p-5 rounded-2xl text-left transition-all group"
+          style={{
+            background: "linear-gradient(135deg, var(--accent-primary) 0%, #17a49c 100%)",
+            color: "#021a19",
+            boxShadow: "0 4px 20px var(--accent-primary-glow), inset 0 1px 0 rgba(255,255,255,0.15)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.boxShadow = "0 8px 28px var(--accent-primary-glow), inset 0 1px 0 rgba(255,255,255,0.15)";
+            e.currentTarget.style.transform = "translateY(-1px)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.boxShadow = "0 4px 20px var(--accent-primary-glow), inset 0 1px 0 rgba(255,255,255,0.15)";
+            e.currentTarget.style.transform = "translateY(0)";
+          }}
         >
-          <MessageSquare size={22} strokeWidth={2} />
-          <div>
-            <p className="font-semibold text-sm">New Chat</p>
-            <p className="text-xs mt-0.5 opacity-75">Ask questions about your documents</p>
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: "rgba(2,26,25,0.15)" }}
+          >
+            <Sparkles size={19} strokeWidth={2} />
           </div>
+          <div>
+            <p className="font-semibold text-[14px]" style={{ letterSpacing: "-0.02em" }}>New chat</p>
+            <p className="text-[12.5px] mt-0.5" style={{ opacity: 0.7 }}>
+              Ask questions about your documents
+            </p>
+          </div>
+          <ArrowRight
+            size={16}
+            className="ml-auto flex-shrink-0 transition-transform group-hover:translate-x-0.5"
+          />
         </button>
+
         <Link
           href="/documents"
-          className="flex items-start gap-4 p-5 rounded-[var(--radius-lg)] text-left transition-all"
-          style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle)", color: "var(--text-primary)" }}
-          onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--border-strong)")}
-          onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border-subtle)")}
+          className="flex items-center gap-4 p-5 rounded-2xl text-left transition-all group"
+          style={{
+            background: "var(--bg-card)",
+            border: "1px solid var(--border-subtle)",
+            color: "var(--text-primary)",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = "var(--border-default)";
+            e.currentTarget.style.background = "var(--bg-elevated)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = "var(--border-subtle)";
+            e.currentTarget.style.background = "var(--bg-card)";
+          }}
         >
-          <Upload size={22} strokeWidth={2} style={{ color: "var(--accent-primary)" }} />
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: "var(--accent-primary-muted)", color: "var(--accent-primary)" }}
+          >
+            <Upload size={18} strokeWidth={2} />
+          </div>
           <div>
-            <p className="font-semibold text-sm">Upload Document</p>
-            <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+            <p className="font-semibold text-[14px]" style={{ letterSpacing: "-0.02em" }}>
+              Upload document
+            </p>
+            <p className="text-[12.5px] mt-0.5" style={{ color: "var(--text-muted)" }}>
               PDF, DOCX, TXT, Markdown
             </p>
           </div>
+          <ArrowRight
+            size={16}
+            className="ml-auto flex-shrink-0 transition-transform group-hover:translate-x-0.5"
+            style={{ color: "var(--text-muted)" }}
+          />
         </Link>
       </div>
 
-      {/* Stats row */}
+      {/* ── Stats ── */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {isLoading ? (
-          Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="atlas-card p-4 flex flex-col gap-2">
-              <Skeleton style={{ height: "12px", width: "60%" }} />
-              <Skeleton style={{ height: "24px", width: "40%" }} />
-            </div>
-          ))
-        ) : stats ? (
-          [
-            { label: "Documents", value: stats.documentCount, icon: FileText },
-            { label: "Conversations", value: stats.conversationCount, icon: MessageSquare },
-            { label: "Messages", value: stats.messageCount ?? 0, icon: TrendingUp },
-            { label: "Storage", value: formatBytes(stats.storageBytes ?? 0), icon: CheckCircle2 },
-          ].map(({ label, value, icon: Icon }) => (
-            <div key={label} className="atlas-card p-4 flex flex-col gap-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>{label}</span>
-                <Icon size={14} style={{ color: "var(--text-muted)" }} />
+        {isLoading
+          ? Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="atlas-card p-4 flex flex-col gap-3">
+                <Skeleton style={{ height: "11px", width: "55%" }} />
+                <Skeleton style={{ height: "28px", width: "45%" }} />
               </div>
-              <span className="text-xl font-bold" style={{ color: "var(--text-primary)" }}>{value}</span>
-            </div>
-          ))
-        ) : null}
+            ))
+          : statItems.map(({ label, value, icon: Icon, color }) => (
+              <div
+                key={label}
+                className="atlas-card p-4 flex flex-col gap-3"
+              >
+                <div className="flex items-center justify-between">
+                  <span
+                    className="text-[11.5px] font-medium"
+                    style={{ color: "var(--text-muted)", letterSpacing: "0.01em" }}
+                  >
+                    {label}
+                  </span>
+                  <div
+                    className="w-6 h-6 rounded-md flex items-center justify-center"
+                    style={{ background: `${color}15`, color }}
+                  >
+                    <Icon size={12} />
+                  </div>
+                </div>
+                <span
+                  className="text-[22px] font-bold"
+                  style={{ color: "var(--text-primary)", letterSpacing: "-0.04em", lineHeight: 1 }}
+                >
+                  {value}
+                </span>
+              </div>
+            ))}
       </div>
 
-      {/* Recent conversations + Documents */}
+      {/* ── Recent activity ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
         {/* Conversations */}
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+            <h2
+              className="text-[13px] font-semibold"
+              style={{ color: "var(--text-primary)", letterSpacing: "-0.02em" }}
+            >
               Recent conversations
             </h2>
-            <Link href="/chat" className="flex items-center gap-1 text-xs" style={{ color: "var(--accent-primary)" }}>
+            <Link
+              href="/chat"
+              className="flex items-center gap-1 text-[12.5px] transition-colors"
+              style={{ color: "var(--accent-primary)" }}
+            >
               View all <ArrowRight size={12} />
             </Link>
           </div>
@@ -145,16 +224,33 @@ export default function DashboardPage() {
           <div className="flex flex-col gap-2">
             {isLoading ? (
               Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="atlas-card p-3 flex flex-col gap-2">
-                  <Skeleton style={{ height: "13px", width: "70%" }} />
-                  <Skeleton style={{ height: "11px", width: "40%" }} />
+                <div key={i} className="atlas-card p-3.5 flex flex-col gap-2">
+                  <Skeleton style={{ height: "13px", width: "65%" }} />
+                  <Skeleton style={{ height: "11px", width: "35%" }} />
                 </div>
               ))
             ) : conversations.length === 0 ? (
-              <div className="atlas-card p-6 flex flex-col items-center gap-3 text-center">
-                <MessageSquare size={24} style={{ color: "var(--text-muted)" }} />
-                <p className="text-sm" style={{ color: "var(--text-muted)" }}>No conversations yet</p>
-                <Button variant="secondary" size="sm" leftIcon={<Plus size={13} />} onClick={handleNewChat}>
+              <div className="atlas-card p-8 flex flex-col items-center gap-3 text-center">
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center"
+                  style={{ background: "var(--bg-elevated)", color: "var(--text-muted)" }}
+                >
+                  <MessageSquare size={18} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                    No conversations yet
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                    Start a chat to ask about your documents
+                  </p>
+                </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  leftIcon={<Plus size={13} />}
+                  onClick={handleNewChat}
+                >
                   Start chatting
                 </Button>
               </div>
@@ -163,19 +259,30 @@ export default function DashboardPage() {
                 <Link
                   key={conv.id}
                   href={`/chat/${conv.id}`}
-                  className="atlas-card p-3 flex flex-col gap-1 cursor-pointer"
+                  className="atlas-card p-3.5 flex flex-col gap-1.5 hoverable transition-colors"
                 >
-                  <p className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>
+                  <p
+                    className="text-[13px] font-medium truncate"
+                    style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}
+                  >
                     {conv.title}
                   </p>
-                  <div className="flex items-center gap-2 text-xs" style={{ color: "var(--text-muted)" }}>
+                  <div
+                    className="flex items-center gap-1.5 text-[11.5px]"
+                    style={{ color: "var(--text-muted)" }}
+                  >
                     <Clock size={10} />
                     <span>{formatRelativeDate(conv.updatedAt)}</span>
-                    {conv.messageCount && <span>· {conv.messageCount} messages</span>}
+                    {conv.messageCount && (
+                      <span className="opacity-60">· {conv.messageCount} messages</span>
+                    )}
                   </div>
                   {conv.lastMessage && (
-                    <p className="text-xs mt-0.5 truncate" style={{ color: "var(--text-secondary)" }}>
-                      {truncate(conv.lastMessage, 60)}
+                    <p
+                      className="text-[12px] truncate"
+                      style={{ color: "var(--text-secondary)" }}
+                    >
+                      {truncate(conv.lastMessage, 65)}
                     </p>
                   )}
                 </Link>
@@ -187,10 +294,17 @@ export default function DashboardPage() {
         {/* Documents */}
         <div className="flex flex-col gap-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold" style={{ color: "var(--text-primary)" }}>
+            <h2
+              className="text-[13px] font-semibold"
+              style={{ color: "var(--text-primary)", letterSpacing: "-0.02em" }}
+            >
               Recent documents
             </h2>
-            <Link href="/documents" className="flex items-center gap-1 text-xs" style={{ color: "var(--accent-primary)" }}>
+            <Link
+              href="/documents"
+              className="flex items-center gap-1 text-[12.5px] transition-colors"
+              style={{ color: "var(--accent-primary)" }}
+            >
               View all <ArrowRight size={12} />
             </Link>
           </div>
@@ -198,21 +312,33 @@ export default function DashboardPage() {
           <div className="flex flex-col gap-2">
             {isLoading ? (
               Array.from({ length: 3 }).map((_, i) => (
-                <div key={i} className="atlas-card p-3 flex items-center gap-3">
-                  <Skeleton className="w-8 h-8 rounded-lg" />
-                  <div className="flex-1 flex flex-col gap-1.5">
+                <div key={i} className="atlas-card p-3.5 flex items-center gap-3">
+                  <Skeleton className="w-9 h-9 rounded-lg" />
+                  <div className="flex-1 flex flex-col gap-2">
                     <Skeleton style={{ height: "13px", width: "60%" }} />
                     <Skeleton style={{ height: "11px", width: "35%" }} />
                   </div>
                 </div>
               ))
             ) : documents.length === 0 ? (
-              <div className="atlas-card p-6 flex flex-col items-center gap-3 text-center">
-                <FileText size={24} style={{ color: "var(--text-muted)" }} />
-                <p className="text-sm" style={{ color: "var(--text-muted)" }}>No documents yet</p>
+              <div className="atlas-card p-8 flex flex-col items-center gap-3 text-center">
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center"
+                  style={{ background: "var(--bg-elevated)", color: "var(--text-muted)" }}
+                >
+                  <FileText size={18} />
+                </div>
+                <div>
+                  <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+                    No documents yet
+                  </p>
+                  <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                    Upload a file to get started
+                  </p>
+                </div>
                 <Link href="/documents">
                   <Button variant="secondary" size="sm" leftIcon={<Upload size={13} />}>
-                    Upload first document
+                    Upload document
                   </Button>
                 </Link>
               </div>
@@ -221,21 +347,28 @@ export default function DashboardPage() {
                 <Link
                   key={doc.id}
                   href={`/documents/${doc.id}`}
-                  className="atlas-card p-3 flex items-center gap-3 cursor-pointer"
+                  className="atlas-card p-3.5 flex items-center gap-3 hoverable"
                 >
                   <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0"
-                    style={{ background: "var(--accent-primary-muted)", color: "var(--accent-primary)" }}
+                    className="w-9 h-9 rounded-lg flex items-center justify-center text-[10px] font-bold flex-shrink-0 uppercase tracking-wide"
+                    style={{
+                      background: "var(--accent-primary-muted)",
+                      color: "var(--accent-primary)",
+                      letterSpacing: "0.03em",
+                    }}
                   >
                     {doc.fileType}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium truncate" style={{ color: "var(--text-primary)" }}>
+                    <p
+                      className="text-[13px] font-medium truncate"
+                      style={{ color: "var(--text-primary)", letterSpacing: "-0.01em" }}
+                    >
                       {doc.title}
                     </p>
-                    <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex items-center gap-2 mt-1">
                       <DocStatusBadge status={doc.status} />
-                      <span className="text-xs" style={{ color: "var(--text-muted)" }}>
+                      <span className="text-[11.5px]" style={{ color: "var(--text-muted)" }}>
                         {formatRelativeDate(doc.uploadedAt)}
                       </span>
                     </div>
