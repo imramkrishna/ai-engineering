@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { auth } from "../lib/auth.js";
 import {
   conversationExists,
+  deleteConversation,
   generateLangchainMessages,
   getMessages,
   listConversations,
@@ -257,6 +258,50 @@ export const newChatController = async (req: Request, res: Response) => {
       ...(process.env.NODE_ENV !== "production"
         ? { error: error instanceof Error ? error.message : "Unknown error" }
         : {}),
+    });
+  }
+};
+
+export const deleteConversationController = async (req: Request, res: Response) => {
+  const conversationId = Array.isArray(req.params.conversationId)
+    ? req.params.conversationId[0]
+    : req.params.conversationId;
+  const session = await auth.api.getSession({
+    headers: new Headers(req.headers as Record<string, string>),
+  });
+
+  if (!session?.user) {
+    return res.status(401).json({
+      success: false,
+      message: "Unauthorized.",
+    });
+  }
+
+  if (!conversationId) {
+    return res.status(400).json({
+      success: false,
+      message: "Conversation ID is required.",
+    });
+  }
+
+  try {
+    const deleted = await deleteConversation(conversationId, session.user.id);
+    if (!deleted) {
+      return res.status(404).json({
+        success: false,
+        message: "Conversation not found or you don't have permission to delete it.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Conversation deleted successfully.",
+    });
+  } catch (error) {
+    console.error("Error deleting conversation:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Error while deleting conversation.",
     });
   }
 };

@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Plus, ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
 import { conversationsApi } from "@/lib/api/client";
 import type { Conversation, Message } from "@/types";
 import { shortId } from "@/lib/utils";
@@ -159,13 +160,18 @@ export default function ConversationPage() {
   };
 
   const handleDelete = async (id: string) => {
-    // Note: Backend doesn't expose delete endpoint, so we only remove from localStorage
-    const updated = conversations.filter((c) => c.id !== id);
-    setConversations(updated);
-    localStorage.setItem("atlas-conversations", JSON.stringify(updated));
-    
-    if (id === conversationId) {
-      router.push("/chat");
+    try {
+      await conversationsApi.delete(id);
+      const updated = conversations.filter((c) => c.id !== id);
+      setConversations(updated);
+      toast.success("Conversation deleted");
+
+      if (id === conversationId) {
+        router.push("/chat");
+      }
+    } catch (error) {
+      console.error("Failed to delete conversation:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to delete conversation");
     }
   };
 

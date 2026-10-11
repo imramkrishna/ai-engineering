@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Trash2, RefreshCw, FileText, Tag, Calendar, Hash, Cpu } from "lucide-react";
-import { mockDocumentsApi } from "@/lib/mock";
+import { toast } from "sonner";
+import { documentsApi } from "@/lib/api/client";
 import type { Document } from "@/types";
 import { Button, Badge, Skeleton, ErrorState } from "@/components/ui";
 import { StatusBadge } from "@/components/documents";
@@ -19,16 +20,22 @@ export default function DocumentDetailPage() {
 
   useEffect(() => {
     setIsLoading(true);
-    mockDocumentsApi.get(id)
-      .then(setDoc)
+    documentsApi.getAll()
+      .then((documents) => setDoc(documents.find((document) => document.id === id) ?? null))
       .catch(() => setIsError(true))
       .finally(() => setIsLoading(false));
   }, [id]);
 
   const handleDelete = async () => {
     if (!confirm("Delete this document? This action cannot be undone.")) return;
-    await mockDocumentsApi.delete(id);
-    router.push("/documents");
+    try {
+      await documentsApi.delete(id);
+      toast.success("Document deleted");
+      router.push("/documents");
+    } catch (error) {
+      console.error("Failed to delete document:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to delete document");
+    }
   };
 
   const handleRetry = async () => {

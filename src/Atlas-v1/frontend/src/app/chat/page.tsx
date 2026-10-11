@@ -37,10 +37,10 @@ export default function ChatIndexPage() {
 
   const handleDelete = async (id: string) => {
     try {
+      await conversationsApi.delete(id);
       const updated = conversations.filter((c) => c.id !== id);
       setConversations(updated);
-      // Note: Backend doesn't have a delete endpoint yet, so we only update local state
-      // In a real implementation, we would call a delete API endpoint
+      toast.success("Conversation deleted");
     } catch (error) {
       console.error("Failed to delete conversation:", error);
       toast.error(error instanceof Error ? error.message : "Failed to delete conversation");

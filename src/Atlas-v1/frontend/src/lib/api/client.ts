@@ -150,7 +150,15 @@ export const conversationsApi = {
     }
     return response.conversations;
   },
-  // Simulated GET endpoints using localStorage
+  delete: async (conversationId: string): Promise<void> => {
+    const response = await api.delete<{ success: boolean; message?: string }>(
+      `/chat/conversation/${conversationId}`,
+    );
+    if (!response.success) {
+      throw new Error(response.message || "Failed to delete conversation");
+    }
+  },
+  // Conversation details are still read from localStorage until a detail endpoint exists.
   get: (id: string): Promise<Conversation | null> => {
     const stored = localStorage.getItem("atlas-conversations");
     if (!stored) return Promise.resolve(null);
@@ -216,15 +224,15 @@ export const documentsApi = {
     }
     return (res.documents ?? []).map(toFrontendDocument);
   },
-  // Simulated DELETE/Retry via localStorage (backend has no list/delete/retry endpoints)
-  delete: async (id: string) => {
-    const stored = localStorage.getItem("atlas-documents");
-    if (stored) {
-      const docs: Document[] = JSON.parse(stored);
-      localStorage.setItem("atlas-documents", JSON.stringify(docs.filter(d => d.id !== id)));
+  delete: async (id: string): Promise<void> => {
+    const response = await api.delete<{ success: boolean; message?: string }>(
+      `/upload/document/${id}`,
+    );
+    if (!response.success) {
+      throw new Error(response.message || "Failed to delete document");
     }
-    return Promise.resolve();
   },
+  // Retry remains client-side until its backend endpoint exists.
   retry: async (id: string) => {
     const stored = localStorage.getItem("atlas-documents");
     if (stored) {
