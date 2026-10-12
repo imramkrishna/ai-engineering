@@ -13,7 +13,7 @@ import { HumanMessage, SystemMessage } from "langchain";
 import { getChatModel } from "../../../packages/models/models.js";
 import { conversations, db, messages } from "../../../packages/db/index.js";
 import rewriteNewPrompt from "../utils/promptAnalysis.js";
-import { fullTextSearch, vectorSearch } from "../utils/search.js";
+import { hybridSearch } from "../utils/search.js";
 import generateStandaloneQuery from "../utils/promptAnalysis.js";
 const chatModel = getChatModel();
 export const chatController = async (req: Request, res: Response) => {
@@ -43,20 +43,14 @@ export const chatController = async (req: Request, res: Response) => {
       previousMessages,
       query,
     );
-    const vectorResults = await vectorSearch({
+    const rankedResults = await hybridSearch({
       question: analysedPrompt.standaloneQuery,
       userId: session.user.id,
-      limit: 2,
+      limit: 5,
     });
-    const textResults = await fullTextSearch({
-      queryText: analysedPrompt.standaloneQuery,
-      currentUserId: session.user.id,
-      limit: 2,
-    });
-    console.log("Vector Result :", vectorResults);
-    console.log("Text Result : ", textResults);
+    console.log("Hybrid Result :", rankedResults);
     const history = generateLangchainMessages(previousMessages);
-    const context = vectorResults
+    const context = rankedResults
       .map((chunk, index) => `[Source ${index + 1}]\n${chunk.content}`)
       .join("\n\n");
     const response = await chatModel.invoke([
@@ -68,12 +62,12 @@ export const chatController = async (req: Request, res: Response) => {
       ...history,
       new HumanMessage(`Context:\n${context}\n\nQuestion:\n${query}`),
     ]);
-    let sources = vectorResults.map((chunk, index) => ({
+    const sources = rankedResults.map((chunk, index) => ({
       source: `Source ${index + 1}`,
       documentId: chunk.documentId,
       documentName: chunk.documentName,
       metadata: chunk.metadata,
-      similarity: chunk.similarity,
+      score: chunk.score,
     }));
     await saveMessage(conversationId, "user", query);
     await saveMessage(conversationId, "assistant", response.content as string);
@@ -86,7 +80,7 @@ export const chatController = async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    console.log("Error in the chat controller : ",error)
+    console.log("Error in the chat controller : ", error);
     return res.status(500).json({
       success: false,
       message: "Error while processing your request.",

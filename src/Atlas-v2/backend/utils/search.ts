@@ -33,20 +33,17 @@ export async function vectorSearch(params: {
 }
 
 export async function fullTextSearch(params: {
-  queryText: string;
-  currentUserId: string;
+  question: string;
+  userId: string;
   limit: number;
 }) {
-  const { queryText, currentUserId, limit } = params;
-  const textQuery = queryText
-  .trim()
-  .split(/\s+/)
-  .filter(Boolean)
-  .join(" OR ");
+  const { question, userId, limit } = params;
+  const textQuery = question.trim().split(/\s+/).filter(Boolean).join(" OR ");
   const results = await db
     .select({
       id: documentChunks.id,
       documentId: documentChunks.documentId,
+      documentName: documents.name,
       content: documentChunks.content,
       metadata: documentChunks.metadata,
     })
@@ -56,7 +53,7 @@ export async function fullTextSearch(params: {
     .where(
       and(
         // 2. Filter by the user ID on the joined table
-        eq(documents.userId, currentUserId),
+        eq(documents.userId, userId),
         // 3. Perform the text match on the chunks table
         sql`${documentChunks.tsv} @@ websearch_to_tsquery('english', ${textQuery})`,
       ),
@@ -73,11 +70,62 @@ export async function fullTextSearch(params: {
 
   return results;
 }
-type RankedResult = {
+type SearchResult = {
   id: string;
   documentId: string;
   documentName?: string;
   content: string;
   metadata: unknown;
+  similarity?: number;
 };
-export async function reciprocalRankFusion() {}
+
+type RankedResult = SearchResult & { score: number };
+
+export function reciprocalRankFusion(
+  vectorResults: SearchResult[],
+  textResults: SearchResult[],
+  limit = Math.max(vectorResults.length, textResults.length),
+): RankedResult[] {
+  const scores = new Map<
+    string,
+    { result: SearchResult; score: number }
+  >();
+
+  const addResults = (results: SearchResult[]) => {
+    results.forEach((result, index) => {
+      const score = 1 / (60 + index + 1);
+      const existing = scores.get(result.id);
+
+      if (existing) {
+        existing.score += score;
+        return;
+      }
+
+      scores.set(result.id, { result, score });
+    });
+  };
+
+  addResults(vectorResults);
+  addResults(textResults);
+
+  return [...scores.values()]
+    .sort((left, right) => right.score - left.score)
+    .map(({ result, score }) => ({ ...result, score }))
+    .slice(0, limit);
+}
+
+export async function hybridSearch(params: {
+  question: string;
+  userId: string;
+  limit?: number;
+}): Promise<RankedResult[]> {
+  const { question, userId, limit = 5 } = params;
+  const retrievalLimit = Math.max(limit, 5);
+
+  const [vectorResults, textResults] = await Promise.all([
+    vectorSearch({ question, userId, limit: retrievalLimit }),
+    fullTextSearch({ question, userId, limit: retrievalLimit }),
+  ]);
+
+  return reciprocalRankFusion(vectorResults, textResults, limit);
+}
