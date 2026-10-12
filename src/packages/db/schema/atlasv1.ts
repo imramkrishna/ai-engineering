@@ -82,7 +82,7 @@ export const documents = pgTable(
     }),
   },
   (table) => [
-    index("document_chunks_document_id_idx").on(table.id),
+    index("document_id_idx").on(table.id),
     index("documents_user_id_idx").on(table.userId),
   ],
 );
