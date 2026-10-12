@@ -9,9 +9,15 @@ import {
   vector,
   jsonb,
   index,
+  customType,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth-schema.js";
 
+const tsvector = customType<{ data: string }>({
+  dataType() {
+    return "tsvector";
+  },
+});
 export const documentStatus = pgEnum("document_status", [
   "queued",
   "processing",
@@ -25,60 +31,66 @@ export const ingestionJobStatus = pgEnum("ingestion_job_status", [
   "failed",
 ]);
 
-export const documents = pgTable("documents", {
-  id: uuid("id").defaultRandom().primaryKey(),
+export const documents = pgTable(
+  "documents",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
 
-  // Owner of the document
-  userId: text("user_id")
-    .notNull()
-    .references(() => user.id, { onDelete: "cascade" }),
+    // Owner of the document
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
 
-  // Original filename
-  name: varchar("name", { length: 255 }).notNull(),
+    // Original filename
+    name: varchar("name", { length: 255 }).notNull(),
 
-  // MIME type: application/pdf, etc.
-  mimeType: varchar("mime_type", { length: 100 }).notNull(),
+    // MIME type: application/pdf, etc.
+    mimeType: varchar("mime_type", { length: 100 }).notNull(),
 
-  // File size in bytes
-  size: integer("size").notNull(),
+    // File size in bytes
+    size: integer("size").notNull(),
 
-  // Where the original file is stored
-  storageKey: text("storage_key").notNull(),
+    // Where the original file is stored
+    storageKey: text("storage_key").notNull(),
 
-  // Optional hash to detect duplicate/unchanged files
-  contentHash: varchar("content_hash", { length: 64 }),
+    // Optional hash to detect duplicate/unchanged files
+    contentHash: varchar("content_hash", { length: 64 }),
 
-  // Processing state
-  status: documentStatus("status").default("queued").notNull(),
+    // Processing state
+    status: documentStatus("status").default("queued").notNull(),
 
-  // Useful for displaying errors in the UI
-  errorMessage: text("error_message"),
+    // Useful for displaying errors in the UI
+    errorMessage: text("error_message"),
 
-  // Number of chunks generated
-  chunkCount: integer("chunk_count"),
+    // Number of chunks generated
+    chunkCount: integer("chunk_count"),
 
-  createdAt: timestamp("created_at", {
-    withTimezone: true,
-  })
-    .defaultNow()
-    .notNull(),
+    createdAt: timestamp("created_at", {
+      withTimezone: true,
+    })
+      .defaultNow()
+      .notNull(),
 
-  updatedAt: timestamp("updated_at", {
-    withTimezone: true,
-  })
-    .defaultNow()
-    .notNull(),
+    updatedAt: timestamp("updated_at", {
+      withTimezone: true,
+    })
+      .defaultNow()
+      .notNull(),
 
-  processedAt: timestamp("processed_at", {
-    withTimezone: true,
-  }),
-});
+    processedAt: timestamp("processed_at", {
+      withTimezone: true,
+    }),
+  },
+  (table) => [
+    index("document_chunks_document_id_idx").on(table.id),
+    index("documents_user_id_idx").on(table.userId),
+  ],
+);
 
 export const documentChunks = pgTable(
   "document_chunks",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    userId:text("user_id").references(()=>user.id),
     documentId: uuid("document_id")
       .notNull()
       .references(() => documents.id, { onDelete: "cascade" }),
@@ -96,14 +108,26 @@ export const documentChunks = pgTable(
     embedding: vector("embedding", {
       dimensions: 1024,
     }),
-
+    // 2. Add the tsvector column placeholder
+    tsv: tsvector("tsv"),
     createdAt: timestamp("created_at", {
       withTimezone: true,
     })
       .defaultNow()
       .notNull(),
   },
-  (table) => [index("document_chunks_document_id_idx").on(table.documentId)],
+  (table) => [
+    index("document_chunks_document_id_idx").on(table.documentId),
+
+    // 3. Add HNSW index for Vector Search (Semantic meaning)
+    index("document_chunks_embedding_idx").using(
+      "hnsw",
+      table.embedding.op("vector_cosine_ops"),
+    ),
+
+    // 4. Add GIN index for Full-Text Search (Exact keywords)
+    index("document_chunks_tsv_idx").using("gin", table.tsv),
+  ],
 );
 
 export const ingestionJobs = pgTable(

@@ -1,4 +1,4 @@
-import { and, asc, cosineDistance, eq } from "drizzle-orm";
+import { and, asc, cosineDistance, desc, eq, sql } from "drizzle-orm";
 import { getEmbeddingsModel } from "../../../packages/models/models.js";
 import { db, documentChunks, documents } from "../../../packages/db/index.js";
 
@@ -31,6 +31,34 @@ export async function vectorSearch(params: {
   }));
 }
 
-export async function fullTextSearch() {}
+export async function fullTextSearch(
+  queryText: string,
+  currentUserId: string,
+  limit = 5,
+) {
+  const results = await db
+    .select({
+      id: documentChunks.id,
+      documentId: documentChunks.documentId,
+      content: documentChunks.content,
+      metadata: documentChunks.metadata,
+      rankScore: sql<number>`ts_rank_cd(${documentChunks.tsv}, websearch_to_tsquery('english', ${queryText}))`,
+    })
+    .from(documentChunks)
+    // 1. Join the documents table using the foreign key
+    .innerJoin(documents, eq(documentChunks.documentId, documents.id))
+    .where(
+      and(
+        // 2. Filter by the user ID on the joined table
+        eq(documents.userId, currentUserId),
+        // 3. Perform the text match on the chunks table
+        sql`${documentChunks.tsv} @@ websearch_to_tsquery('english', ${queryText})`,
+      ),
+    )
+    .orderBy(desc(sql`rankScore`))
+    .limit(limit);
+
+  return results;
+}
 
 export async function reciprocalRankFusion() {}

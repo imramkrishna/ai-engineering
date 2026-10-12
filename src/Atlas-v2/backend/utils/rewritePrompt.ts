@@ -19,7 +19,7 @@ const QueryAnalysis = z.object({
     pages: z.array(z.number()),
   }),
 });
-const model=getChatModel()
+const model = getChatModel();
 async function rewriteNewPrompt(history: [], question: string) {
   const rewrite = `
 Rewrite the latest user question as a standalone search query.
@@ -34,6 +34,10 @@ Also extract useful metadata filters such as year, document name, department,
 page, or policy type.
 `;
 
-const rewritten=await model.withStructuredOutput(QueryAnalysis).invoke(rewrite)
-return rewritten;
+  const rewritten = await model
+    .withStructuredOutput(QueryAnalysis)
+    .invoke(rewrite);
+  return rewritten;
 }
+
+export default rewriteNewPrompt;
