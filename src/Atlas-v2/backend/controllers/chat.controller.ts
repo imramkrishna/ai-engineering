@@ -11,8 +11,7 @@ import {
 } from "../lib/queries.js";
 import { HumanMessage, SystemMessage } from "langchain";
 import { getChatModel } from "../../../packages/models/models.js";
-import { conversations, db, messages } from "../../../packages/db/index.js";
-import rewriteNewPrompt from "../utils/promptAnalysis.js";
+import { conversations, db } from "../../../packages/db/index.js";
 import { hybridSearch } from "../utils/search.js";
 import generateStandaloneQuery from "../utils/promptAnalysis.js";
 const chatModel = getChatModel();
