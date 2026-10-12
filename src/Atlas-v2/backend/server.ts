@@ -9,7 +9,7 @@ app.use(express.json());
 app.use(
   cors({
     origin: ["http://localhost:3000"],
-    credentials: true,
+    credentials: true, 
   }),
 );
 app.all("/api/auth/*splat", toNodeHandler(auth));
@@ -18,11 +18,11 @@ app.use("/api/v1/upload", uploadRouter);
 
 app.get("/", (req, res) => {
   res.json({
-    message: "Atlas-v1 Backend Server working.",
+    message: "Atlas-v2 Backend Server working.",
     timestamp: new Date().toLocaleString(),
   });
 });
 
 app.listen(3002, () => {
-  console.log("Atlas-v1 Backend Server running on http://localhost:3002");
+  console.log("Atlas-v2 Backend Server running on http://localhost:3002");
 });

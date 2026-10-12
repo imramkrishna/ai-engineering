@@ -12,6 +12,9 @@ import {
 import { HumanMessage, SystemMessage } from "langchain";
 import { getChatModel } from "../../../packages/models/models.js";
 import { conversations, db, messages } from "../../../packages/db/index.js";
+import rewriteNewPrompt from "../utils/promptAnalysis.js";
+import { fullTextSearch, vectorSearch } from "../utils/search.js";
+import generateStandaloneQuery from "../utils/promptAnalysis.js";
 const chatModel = getChatModel();
 export const chatController = async (req: Request, res: Response) => {
   const { conversationId, query } = req.body;
@@ -36,22 +39,26 @@ export const chatController = async (req: Request, res: Response) => {
       });
     }
     const previousMessages = await getMessages(conversationId);
-    const chunks = await retrieveRelevantChunks({
-      question: query as string,
-      userId: session.user.id as string,
-      limit: 5,
+    const analysedPrompt = await generateStandaloneQuery(
+      previousMessages,
+      query,
+    );
+    const vectorResults = await vectorSearch({
+      question: analysedPrompt.standaloneQuery,
+      userId: session.user.id,
+      limit: 2,
     });
-    if (chunks.length === 0) {
-      return res.status(200).json({
-        answer: "I couldn't find relevant information in your documents.",
-        sources: [],
-      });
-    }
-
-    const context = chunks
+    const textResults = await fullTextSearch({
+      queryText: analysedPrompt.standaloneQuery,
+      currentUserId: session.user.id,
+      limit: 2,
+    });
+    console.log("Vector Result :", vectorResults);
+    console.log("Text Result : ", textResults);
+    const history = generateLangchainMessages(previousMessages);
+    const context = vectorResults
       .map((chunk, index) => `[Source ${index + 1}]\n${chunk.content}`)
       .join("\n\n");
-    const history = generateLangchainMessages(previousMessages);
     const response = await chatModel.invoke([
       new SystemMessage(
         "Answer using the supplied document context. " +
@@ -61,7 +68,7 @@ export const chatController = async (req: Request, res: Response) => {
       ...history,
       new HumanMessage(`Context:\n${context}\n\nQuestion:\n${query}`),
     ]);
-    let sources = chunks.map((chunk, index) => ({
+    let sources = vectorResults.map((chunk, index) => ({
       source: `Source ${index + 1}`,
       documentId: chunk.documentId,
       documentName: chunk.documentName,
@@ -79,6 +86,7 @@ export const chatController = async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
+    console.log("Error in the chat controller : ",error)
     return res.status(500).json({
       success: false,
       message: "Error while processing your request.",
@@ -86,7 +94,10 @@ export const chatController = async (req: Request, res: Response) => {
   }
 };
 
-export const listConversationsController = async (req: Request, res: Response) => {
+export const listConversationsController = async (
+  req: Request,
+  res: Response,
+) => {
   const session = await auth.api.getSession({
     headers: new Headers(req.headers as Record<string, string>),
   });
@@ -262,7 +273,10 @@ export const newChatController = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteConversationController = async (req: Request, res: Response) => {
+export const deleteConversationController = async (
+  req: Request,
+  res: Response,
+) => {
   const conversationId = Array.isArray(req.params.conversationId)
     ? req.params.conversationId[0]
     : req.params.conversationId;
@@ -289,7 +303,8 @@ export const deleteConversationController = async (req: Request, res: Response) 
     if (!deleted) {
       return res.status(404).json({
         success: false,
-        message: "Conversation not found or you don't have permission to delete it.",
+        message:
+          "Conversation not found or you don't have permission to delete it.",
       });
     }
 

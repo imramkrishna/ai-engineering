@@ -3,6 +3,7 @@ import type { Document } from "langchain";
 const splitter = new RecursiveCharacterTextSplitter({
   chunkSize: 1200,
   chunkOverlap: 150,
+  separators: ["\n\n", "\n", ".", "?", "!", " ", ""],
 });
 async function generateChunks(documentText: Document[]) {
   try {

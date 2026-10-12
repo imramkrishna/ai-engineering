@@ -9,7 +9,7 @@ import {
   documents,
   ingestionJobs,
 } from "../../packages/db/index.js";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 const worker = new Worker(
   "injestion-queue",
@@ -30,6 +30,7 @@ const worker = new Worker(
         chunkIndex: index,
         metadata: chunk.metadata ?? {},
         embedding: embeddings[index],
+        tsv: sql`to_tsvector('english', ${chunk.pageContent})`,
       }));
       await db.transaction(async (tx) => {
         await tx.insert(documentChunks).values(rows);

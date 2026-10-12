@@ -6,14 +6,15 @@ const embeddingModel = getEmbeddingsModel();
 export async function vectorSearch(params: {
   question: string;
   userId: string;
-  limit?: number;
+  limit: number;
 }) {
-  const { question, userId, limit = 5 } = params;
+  const { question, userId, limit } = params;
   const questionEmbedding = await embeddingModel.embedQuery(question);
 
   const distance = cosineDistance(documentChunks.embedding, questionEmbedding);
   const chunks = await db
     .select({
+      id: documentChunks.id,
       content: documentChunks.content,
       metadata: documentChunks.metadata,
       documentId: documents.id,
@@ -31,18 +32,23 @@ export async function vectorSearch(params: {
   }));
 }
 
-export async function fullTextSearch(
-  queryText: string,
-  currentUserId: string,
-  limit = 5,
-) {
+export async function fullTextSearch(params: {
+  queryText: string;
+  currentUserId: string;
+  limit: number;
+}) {
+  const { queryText, currentUserId, limit } = params;
+  const textQuery = queryText
+  .trim()
+  .split(/\s+/)
+  .filter(Boolean)
+  .join(" OR ");
   const results = await db
     .select({
       id: documentChunks.id,
       documentId: documentChunks.documentId,
       content: documentChunks.content,
       metadata: documentChunks.metadata,
-      rankScore: sql<number>`ts_rank_cd(${documentChunks.tsv}, websearch_to_tsquery('english', ${queryText}))`,
     })
     .from(documentChunks)
     // 1. Join the documents table using the foreign key
@@ -52,13 +58,26 @@ export async function fullTextSearch(
         // 2. Filter by the user ID on the joined table
         eq(documents.userId, currentUserId),
         // 3. Perform the text match on the chunks table
-        sql`${documentChunks.tsv} @@ websearch_to_tsquery('english', ${queryText})`,
+        sql`${documentChunks.tsv} @@ websearch_to_tsquery('english', ${textQuery})`,
       ),
     )
-    .orderBy(desc(sql`rankScore`))
+    .orderBy(
+      desc(sql`
+    ts_rank_cd(
+      ${documentChunks.tsv},
+      websearch_to_tsquery('english', ${textQuery})
+    )
+ `),
+    )
     .limit(limit);
 
   return results;
 }
-
+type RankedResult = {
+  id: string;
+  documentId: string;
+  documentName?: string;
+  content: string;
+  metadata: unknown;
+};
 export async function reciprocalRankFusion() {}
