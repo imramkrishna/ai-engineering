@@ -1,20 +1,15 @@
 import {
-  AIMessage,
   createAgent,
-  HumanMessage,
   modelCallLimitMiddleware,
-  StructuredTool,
   toolCallLimitMiddleware,
-  ToolMessage,
-  type BaseMessage,
+  toolRetryMiddleware,
+  toolStrategy,
 } from "langchain";
 import { getChatModel } from "../packages/models/models.js";
-import { makeTools } from "./tools/makeTools.js";
+import allTools from "./tools/index.js";
 import z from "zod";
-const tools = makeTools({ userId: "fAM9GkvxnzQ74jIQMPNf2lhK0ioRGV07" });
-const model = getChatModel().bindTools(tools);
-const history: BaseMessage[] = [];
-const toolByName = new Map(tools.map((t) => [t.name, t]));
+const model = getChatModel();
+const toolByName = new Map(allTools.map((t) => [t.name, t]));
 
 const Report = z.object({
   summary: z.string(),
@@ -36,10 +31,14 @@ Return the required structured report, even if this request is incomplete or
 only a greeting.
 `;
 const researchAgent = createAgent({
-  tools,
+  tools: allTools,
   model,
   systemPrompt: SYSTEM_PROMPT,
-  responseFormat: Report,
+  contextSchema: z.object({
+    userId: z.string(),
+    role: z.enum(["admin", "developer", "member"]),
+  }),
+  responseFormat: toolStrategy(Report),
   middleware: [
     toolCallLimitMiddleware({
       toolName: "search_documents",
@@ -61,9 +60,26 @@ const researchAgent = createAgent({
       toolName: "scrape_and_interact_with_webpage",
       runLimit: 1,
     }),
+    toolCallLimitMiddleware({
+      toolName: "search_documents_by_name",
+      runLimit: 1,
+    }),
+    toolCallLimitMiddleware({
+      toolName: "query_database",
+      runLimit: 1,
+    }),
+    toolCallLimitMiddleware({
+      toolName: "create_task",
+      runLimit: 1,
+    }),
     modelCallLimitMiddleware({
       runLimit: 10,
     }),
+    toolRetryMiddleware({
+      maxRetries: 2,
+      maxDelayMs: 2000,
+    }),
+    
   ],
 });
 
