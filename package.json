@@ -36,6 +36,7 @@
     "dotenv": "^18.0.5",
     "drizzle-orm": "^1.0.0-rc.4",
     "express": "^5.2.1",
+    "firecrawl": "^4.46.0",
     "ioredis": "^6.0.0",
     "langchain": "^1.5.15",
     "multer": "^2.4.0",
