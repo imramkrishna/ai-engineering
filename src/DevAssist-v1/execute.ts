@@ -17,6 +17,7 @@ async function execute(message: string) {
   history.push(new AIMessage(ai.content));
 
   for (const toolCall of ai.tool_calls ?? []) {
+    console.log(`Calling ${toolCall.name} tool`)
     const toolResult = await (
       toolByName.get(toolCall.name) as StructuredTool
     ).invoke(toolCall.args);
