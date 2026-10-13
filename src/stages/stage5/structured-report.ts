@@ -1,7 +1,6 @@
 import { createAgent, toolStrategy } from "langchain";
 import z from "zod";
 import { getChatModel } from "../../packages/models/models.js";
-import { searchDocuments } from "../stage4/tools/search-docs.js";
 import { makeTools } from "../../DevAssist-v1/tools/makeTools.js";
 const Report = z.object({
   summary: z.string(),
