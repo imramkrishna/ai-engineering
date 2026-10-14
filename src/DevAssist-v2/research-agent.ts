@@ -7,9 +7,9 @@ import {
 } from "langchain";
 import { getChatModel } from "../packages/models/models.js";
 import allTools from "./tools/index.js";
+import { duplicateCallMiddleware } from "./middleware/duplicate-call.js";
 import z from "zod";
 const model = getChatModel();
-const toolByName = new Map(allTools.map((t) => [t.name, t]));
 
 const Report = z.object({
   summary: z.string(),
@@ -40,6 +40,7 @@ const researchAgent = createAgent({
   }),
   responseFormat: toolStrategy(Report),
   middleware: [
+    duplicateCallMiddleware,
     toolCallLimitMiddleware({
       toolName: "search_documents",
       runLimit: 1,
