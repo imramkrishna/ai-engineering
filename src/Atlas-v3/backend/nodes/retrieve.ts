@@ -19,5 +19,6 @@ export const retrieve: GraphNode<typeof AtlasState> = async (state, config) => {
         score: d.score,
       };
     }),
+    retrievalAttempt: state.retrievalAttempt + 1,
   };
 };
