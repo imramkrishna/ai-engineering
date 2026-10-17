@@ -6,7 +6,7 @@ const source = z.object({
   title: z.string(),
   page: z.number().nullable(),
   content: z.string(),
-  score: z.string(),
+  score: z.number(),
 });
 
 const citation=z.object({

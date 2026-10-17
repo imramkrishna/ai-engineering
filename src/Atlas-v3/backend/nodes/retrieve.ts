@@ -9,12 +9,15 @@ export const retrieve: GraphNode<typeof AtlasState> = async (state, config) => {
     question: state.question,
     limit: 10,
   });
-  let searchResult = hybridSearchResult.map((r) => {
-    return {
-        document
-      content: r.content,
-      metadata: r.metadata,
-      score: r.score,
-    };
-  });
+  return {
+    documents: hybridSearchResult.map((d) => {
+      return {
+        chunkId: d.documentId,
+        title: d.documentName ?? "Untitled",
+        page: (d.metadata as { page: number | null }).page || null,
+        content: d.content,
+        score: d.score,
+      };
+    }),
+  };
 };

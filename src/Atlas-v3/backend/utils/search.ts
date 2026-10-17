@@ -75,7 +75,7 @@ type SearchResult = {
   documentId: string;
   documentName?: string;
   content: string;
-  metadata: unknown;
+  metadata: unknown | { page?: number | string | null; source?: string };
   similarity?: number;
 };
 
@@ -86,10 +86,7 @@ export function reciprocalRankFusion(
   textResults: SearchResult[],
   limit = Math.max(vectorResults.length, textResults.length),
 ): RankedResult[] {
-  const scores = new Map<
-    string,
-    { result: SearchResult; score: number }
-  >();
+  const scores = new Map<string, { result: SearchResult; score: number }>();
 
   const addResults = (results: SearchResult[]) => {
     results.forEach((result, index) => {
