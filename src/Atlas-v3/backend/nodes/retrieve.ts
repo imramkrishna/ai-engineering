@@ -3,10 +3,15 @@ import type { AtlasState } from "../state.js";
 import { hybridSearch } from "../utils/search.js";
 
 export const retrieve: GraphNode<typeof AtlasState> = async (state, config) => {
-  const { userId } = config as { userId: string };
+  const userId = (config.configurable as { userId?: string } | undefined)
+    ?.userId;
+  if (!userId) {
+    throw new Error("A userId is required to retrieve documents.");
+  }
+
   const hybridSearchResult = await hybridSearch({
     userId,
-    question: state.question,
+    question: state.searchQuery || state.question,
     limit: 10,
   });
   return {

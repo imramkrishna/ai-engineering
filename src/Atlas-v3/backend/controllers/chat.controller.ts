@@ -6,15 +6,11 @@ import {
   generateLangchainMessages,
   getMessages,
   listConversations,
-  retrieveRelevantChunks,
   saveMessage,
 } from "../lib/queries.js";
-import { HumanMessage, SystemMessage } from "langchain";
-import { getChatModel } from "../../../packages/models/models.js";
 import { conversations, db } from "../../../packages/db/index.js";
-import { hybridSearch } from "../utils/search.js";
-import generateStandaloneQuery from "../utils/promptAnalysis.js";
-const chatModel = getChatModel();
+import atlasGraph from "../graph.js";
+import { AIMessage } from "langchain";
 export const chatController = async (req: Request, res: Response) => {
   const { conversationId, query } = req.body;
   const session = await auth.api.getSession({
@@ -27,6 +23,13 @@ export const chatController = async (req: Request, res: Response) => {
     });
   }
   try {
+    if (typeof query !== "string" || !query.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "A valid query is required.",
+      });
+    }
+
     const conversation = await conversationExists(
       conversationId,
       session.user.id,
@@ -38,44 +41,36 @@ export const chatController = async (req: Request, res: Response) => {
       });
     }
     const previousMessages = await getMessages(conversationId);
-    const analysedPrompt = await generateStandaloneQuery(
-      previousMessages,
-      query,
+    const result = await atlasGraph.invoke(
+      {
+        messages: generateLangchainMessages(previousMessages),
+        question: query.trim(),
+        searchQuery: query.trim(),
+      },
+      {
+        configurable: {
+          userId: session.user.id,
+        },
+      },
     );
-    const rankedResults = await hybridSearch({
-      question: analysedPrompt.standaloneQuery,
-      userId: session.user.id,
-      limit: 5,
-    });
-    console.log("Hybrid Result :", rankedResults);
-    const history = generateLangchainMessages(previousMessages);
-    const context = rankedResults
-      .map((chunk, index) => `[Source ${index + 1}]\n${chunk.content}`)
-      .join("\n\n");
-    const response = await chatModel.invoke([
-      new SystemMessage(
-        "Answer using the supplied document context. " +
-          "If the context does not answer the question, say so. " +
-          "Cite supporting chunks using [Source 1], [Source 2], etc.",
-      ),
-      ...history,
-      new HumanMessage(`Context:\n${context}\n\nQuestion:\n${query}`),
-    ]);
-    const sources = rankedResults.map((chunk, index) => ({
-      source: `Source ${index + 1}`,
-      documentId: chunk.documentId,
-      documentName: chunk.documentName,
-      metadata: chunk.metadata,
-      score: chunk.score,
-    }));
+    const response = result.messages.at(-1);
+    const answer =
+      response instanceof AIMessage
+        ? typeof response.content === "string"
+          ? response.content
+          : JSON.stringify(response.content)
+        : "The assistant did not return a response.";
+    const metadata =
+      response instanceof AIMessage ? response.response_metadata : {};
+
     await saveMessage(conversationId, "user", query);
-    await saveMessage(conversationId, "assistant", response.content as string);
+    await saveMessage(conversationId, "assistant", answer);
     return res.status(200).json({
       success: true,
       data: {
         conversationId,
-        message: response.content,
-        sources,
+        message: answer,
+        sources: metadata.citations ?? [],
       },
     });
   } catch (error) {
@@ -189,52 +184,27 @@ export const newChatController = async (req: Request, res: Response) => {
 
     const conversationId = conversation!.id;
 
-    const chunks = await retrieveRelevantChunks({
-      question: query.trim(),
-      userId: session.user.id,
-      limit: 5,
-    });
+    const result = await atlasGraph.invoke(
+      {
+        question: query.trim(),
+        searchQuery: query.trim(),
+      },
+      {
+        configurable: {
+          userId: session.user.id,
+        },
+      },
+    );
 
-    let answer: string;
-    let sources: {
-      source: string;
-      documentId: string;
-      documentName: string;
-      metadata?: unknown;
-      similarity: number;
-    }[] = [];
-
-    if (chunks.length === 0) {
-      answer = "I couldn't find relevant information in your documents.";
-    } else {
-      // 4. Build the context.
-      const context = chunks
-        .map((chunk, index) => `[Source ${index + 1}]\n${chunk.content}`)
-        .join("\n\n");
-
-      // 5. Generate the answer.
-      const response = await chatModel.invoke([
-        new SystemMessage(
-          "Answer using the supplied document context. " +
-            "If the context does not answer the question, say so. " +
-            "Cite supporting chunks using [Source 1], [Source 2], etc.",
-        ),
-        new HumanMessage(`Context:\n${context}\n\nQuestion:\n${query.trim()}`),
-      ]);
-
-      answer =
-        typeof response.content === "string"
+    const response = result.messages.at(-1);
+    const answer =
+      response instanceof AIMessage
+        ? typeof response.content === "string"
           ? response.content
-          : JSON.stringify(response.content);
-
-      sources = chunks.map((chunk, index) => ({
-        source: `Source ${index + 1}`,
-        documentId: chunk.documentId,
-        documentName: chunk.documentName,
-        metadata: chunk.metadata,
-        similarity: chunk.similarity,
-      }));
-    }
+          : JSON.stringify(response.content)
+        : "The assistant did not return a response.";
+    const metadata =
+      response instanceof AIMessage ? response.response_metadata : {};
 
     await saveMessage(conversationId, "user", query);
     await saveMessage(conversationId, "assistant", answer);
@@ -245,7 +215,7 @@ export const newChatController = async (req: Request, res: Response) => {
       data: {
         conversationId,
         message: answer,
-        sources,
+        sources: metadata.citations ?? [],
       },
     });
   } catch (error) {

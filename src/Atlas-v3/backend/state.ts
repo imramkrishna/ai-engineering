@@ -10,7 +10,7 @@ const source = z.object({
 });
 
 const citation=z.object({
-    documentId:z.string(),
+    chunkId:z.string(),
     quote:z.string(),
     verified:z.boolean().default(false),
 })

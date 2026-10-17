@@ -3,7 +3,6 @@ import type { AtlasState } from "../state.js";
 import { getChatModel } from "../../../packages/models/models.js";
 import { HumanMessage, SystemMessage } from "langchain";
 import z from "zod";
-import { verifyCitations } from "../utils/citation.js";
 
 const generationSchema = z.object({
   answer: z.string(),
@@ -62,17 +61,9 @@ ${document.content}
   .join("\n")}
   `),
   ]);
-  const citations = verifyCitations(result.citations, s.documents);
-  const invalidCitations = citations.filter((citation) => !citation.verified);
   return {
     answer: result.answer,
-    citations,
-    issues:
-      invalidCitations.length > 0
-        ? [
-            ...s.issues,
-            "One or more generated citations do not match the retrieved documents.",
-          ]
-        : s.issues,
+    citations: result.citations,
+    generationAttempt: s.generationAttempt + 1,
   };
 };
