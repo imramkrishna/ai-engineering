@@ -1,7 +1,14 @@
 import { StateSchema } from "@langchain/langgraph";
 import z from "zod";
 
-export const TaskFlowState = new StateSchema({
-  task: z.string(),
+const planNode = z.object({
+  name: z.string(),
+  risk: z.enum(["high", "low"]),
 });
+
+export const TaskFlowState = new StateSchema({
+  plan: z.array(planNode),
+  currentStep: z.number().default(0),
+});
+
 
