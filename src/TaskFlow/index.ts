@@ -6,7 +6,7 @@ async function main() {
   const config = { configurable: { thread_id: "test_1" } };
   const result = await taskFlowGraph.invoke(
     {
-      task: "Hello. send email",
+      plan: [{ name: "Hello. send email", risk: "high" }],
     },
     config,
   );
