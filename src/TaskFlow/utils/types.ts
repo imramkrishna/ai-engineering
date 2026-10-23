@@ -1,7 +1,7 @@
 import { StateSchema } from "@langchain/langgraph";
 import z from "zod";
 
-const planNode = z.object({
+export const planNode = z.object({
   name: z.string(),
   risk: z.enum(["high", "low"]),
 });

@@ -1,25 +1,29 @@
 import { Command } from "@langchain/langgraph";
 import taskFlowGraph from "./graph.js";
 import { askQuestion } from "./utils/ask.js";
+import { generatePlan } from "./lib/ queries.js";
+
 
 async function main() {
   const config = { configurable: { thread_id: "test_1" } };
+  const query = await askQuestion("Describe Tasks : ");
+  const plans = await generatePlan(query);
   const result = await taskFlowGraph.invoke(
     {
-      plan: [{ name: "Hello. send email", risk: "high" }],
+      plan: plans,
     },
     config,
   );
   const state = await taskFlowGraph.getState(config);
-  const pendingInterrupt = state.tasks.flatMap((task) => task.interrupts ?? []);
-  if (pendingInterrupt.length > 0) {
-    const answer = await askQuestion(pendingInterrupt[0]?.value);
-    await taskFlowGraph.invoke(
-      new Command({
-        resume: answer,
-      }),
-      config,
-    );
-  }
+  const pendingInterrupts = state.tasks.flatMap(
+    (task) => task.interrupts ?? [],
+  );
+  const interruptsResult = pendingInterrupts.map(async (pendingInterrupt) => {
+    const answer = await askQuestion(pendingInterrupt.value);
+    return new Command({
+      resume: answer,
+    });
+  });
+  console.log("Interrupt Result : ", interruptsResult);
 }
 main();
