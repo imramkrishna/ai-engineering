@@ -16,12 +16,11 @@ async function main() {
   const pendingInterrupts = state.tasks.flatMap(
     (task) => task.interrupts ?? [],
   );
-  const interruptsResult = pendingInterrupts.map(async (pendingInterrupt) => {
+  pendingInterrupts.map(async (pendingInterrupt) => {
     const answer = await askQuestion(pendingInterrupt.value);
     return new Command({
       resume: answer,
     });
   });
-  console.log("Interrupt Result : ", interruptsResult);
 }
 main();
