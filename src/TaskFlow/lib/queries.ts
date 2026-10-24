@@ -13,5 +13,5 @@ export async function generatePlan(query: string) {
     .withStructuredOutput(planResponseSchema)
     .invoke([systemMessage, new HumanMessage(query)]);
   console.log("PLANS : ", result.plans);
-  return result;
+  return result.plans;
 }
