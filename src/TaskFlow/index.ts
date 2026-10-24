@@ -3,14 +3,12 @@ import taskFlowGraph from "./graph.js";
 import { askQuestion } from "./utils/ask.js";
 import { generatePlan } from "./lib/ queries.js";
 
-
 async function main() {
   const config = { configurable: { thread_id: "test_1" } };
-  const query = await askQuestion("Describe Tasks : ");
-  const plans = await generatePlan(query);
-  const result = await taskFlowGraph.invoke(
+  const query = await askQuestion("Enter Tasks : ");
+  await taskFlowGraph.invoke(
     {
-      plan: plans,
+      query,
     },
     config,
   );

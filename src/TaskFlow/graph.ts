@@ -11,7 +11,11 @@ builder
   .addNode("plan", planNode)
   .addNode("executeStep", executeStepNode)
   .addEdge(START, "plan")
-  .addConditionalEdges("executeStep",routeAfterExecuteStep,["executeStep",END])
+  .addEdge("plan", "executeStep")
+  .addConditionalEdges("executeStep", routeAfterExecuteStep, [
+    "executeStep",
+    END,
+  ]);
 
 const taskFlowGraph: ReturnType<typeof builder.compile> = builder.compile({
   checkpointer: checkPointer,

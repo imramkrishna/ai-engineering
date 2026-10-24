@@ -7,8 +7,8 @@ export const planNode = z.object({
 });
 
 export const TaskFlowState = new StateSchema({
-  plan: z.array(planNode),
+  query: z.string(),
+  plans: z.array(planNode).default([]),
   currentStep: z.number().default(0),
 });
-
 
