@@ -6,10 +6,10 @@ import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 //Added path to avoid failure while executing the file from other terminal session other than its root dir which is ai-engineering
  
 dotenv.config({ path: "/Users/ramkrishnayadav/ai-engineering/.env" });
-const chatModel = process.env.CHAT_MODEL ?? "openrouter/free";
+const chatModel = process.env.CHAT_MODEL ?? "google/gemini-2.5-flash-lite";
 
 const embeddingModel =
-  process.env.EMBEDDING_MODEL ?? "liquid/lfm-2.5-embedding-350m:free";
+  process.env.EMBEDDING_MODEL ?? "openai/text-embedding-3-small";
 
 const apiKey = process.env.OPENROUTER_API_KEY as string;
 

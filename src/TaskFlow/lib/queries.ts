@@ -12,6 +12,6 @@ export async function generatePlan(query: string) {
   const result = await model
     .withStructuredOutput(planResponseSchema)
     .invoke([systemMessage, new HumanMessage(query)]);
-  console.log("PLANS : ", result);
+  console.log("PLANS : ", result.plans);
   return result;
 }
