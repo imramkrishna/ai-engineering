@@ -4,12 +4,14 @@ import { SystemMessage, HumanMessage } from "@langchain/core/messages";
 import { z } from "zod";
 import { taskPlannerSystemPrompt } from "./prompts.js";
 const model = getChatModel();
-
+const planResponseSchema = z.object({
+  plans: z.array(planNode),
+});
 export async function generatePlan(query: string) {
   const systemMessage = new SystemMessage(taskPlannerSystemPrompt);
   const result = await model
-    .withStructuredOutput(z.array(planNode))
+    .withStructuredOutput(planResponseSchema)
     .invoke([systemMessage, new HumanMessage(query)]);
-
+  console.log("PLANS : ", result);
   return result;
 }
